@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agentic Browser</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="chrome">
+    <!-- Tab bar -->
+    <div id="tab-bar">
+      <div id="tabs"></div>
+      <button id="btn-new-tab" title="New Tab">+</button>
+    </div>
+
+    <!-- Navigation bar -->
+    <div id="nav-bar">
+      <button id="btn-back" title="Back">&#8592;</button>
+      <button id="btn-forward" title="Forward">&#8594;</button>
+      <button id="btn-reload" title="Reload">&#8635;</button>
+      <input id="address-bar" type="text" placeholder="Search or enter URL..." spellcheck="false" />
+    </div>
+  </div>
+
+  <script src="../../dist/renderer/index.js"></script>
+</body>
+</html>

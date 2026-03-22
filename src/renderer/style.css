@@ -1,0 +1,222 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --chrome-bg: #1e1e2e;
+  --tab-bg: #2a2a3d;
+  --tab-active-bg: #313145;
+  --tab-hover-bg: #2f2f44;
+  --tab-text: #cdd6f4;
+  --tab-text-muted: #7f849c;
+  --accent: #89b4fa;
+  --nav-bg: #181825;
+  --input-bg: #313145;
+  --input-border: #45475a;
+  --input-focus: #89b4fa;
+  --btn-hover: #45475a;
+  --close-hover: #f38ba8;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--chrome-bg);
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--tab-text);
+  -webkit-app-region: no-drag;
+}
+
+/* ── Chrome shell ───────────────────────────────────────────────────────────── */
+
+#chrome {
+  display: flex;
+  flex-direction: column;
+  height: 80px; /* must match CHROME_HEIGHT in tabManager.ts */
+  background: var(--chrome-bg);
+  border-bottom: 1px solid #313145;
+}
+
+/* ── Tab bar ────────────────────────────────────────────────────────────────── */
+
+#tab-bar {
+  display: flex;
+  align-items: stretch;
+  height: 38px;
+  background: var(--nav-bg);
+  padding: 0 4px;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+#tab-bar::-webkit-scrollbar { display: none; }
+
+#tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 10px;
+  min-width: 120px;
+  max-width: 220px;
+  height: 100%;
+  border-radius: 6px 6px 0 0;
+  background: var(--tab-bg);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tab:hover { background: var(--tab-hover-bg); }
+
+.tab.active {
+  background: var(--tab-active-bg);
+  border-top: 2px solid var(--accent);
+}
+
+.tab-favicon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.tab-favicon-placeholder {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  background: var(--tab-text-muted);
+  border-radius: 50%;
+  opacity: 0.4;
+}
+
+.tab-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--tab-text);
+}
+
+.tab.active .tab-title { color: #fff; }
+
+.tab-close {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--tab-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, color 0.1s;
+  padding: 0;
+}
+
+.tab-close:hover {
+  background: var(--close-hover);
+  color: #fff;
+}
+
+#btn-new-tab {
+  align-self: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--tab-text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, color 0.1s;
+}
+
+#btn-new-tab:hover {
+  background: var(--btn-hover);
+  color: var(--tab-text);
+}
+
+/* ── Navigation bar ─────────────────────────────────────────────────────────── */
+
+#nav-bar {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 8px;
+  gap: 6px;
+  background: var(--chrome-bg);
+}
+
+#nav-bar button {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--tab-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, color 0.1s;
+}
+
+#nav-bar button:hover {
+  background: var(--btn-hover);
+  color: var(--tab-text);
+}
+
+#nav-bar button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+#address-bar {
+  flex: 1;
+  height: 32px;
+  border-radius: 16px;
+  border: 1.5px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--tab-text);
+  padding: 0 14px;
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+#address-bar:focus {
+  border-color: var(--input-focus);
+}
+
+#address-bar::selection {
+  background: var(--accent);
+  color: #1e1e2e;
+}

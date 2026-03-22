@@ -1,0 +1,22 @@
+{
+	"name": "agentic-browser",
+	"version": "0.1.0",
+	"description": "An agentic browser built with Electron",
+	"main": "dist/main/index.js",
+	"scripts": {
+		"dev": "concurrently \"npm run build:watch\" \"wait-on dist/main/index.js && electron .\"",
+		"build": "tsc --project tsconfig.main.json && tsc --project tsconfig.preload.json && tsc --project tsconfig.renderer.json",
+		"build:watch": "concurrently \"tsc --project tsconfig.main.json --watch\" \"tsc --project tsconfig.preload.json --watch\" \"tsc --project tsconfig.renderer.json --watch\"",
+		"start": "npm run build && electron ."
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"concurrently": "^8.2.0",
+		"electron": "^30.0.0",
+		"typescript": "^5.4.0",
+		"wait-on": "^7.2.0"
+	},
+	"dependencies": {
+		"playwright": "^1.44.0"
+	}
+}
