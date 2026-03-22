@@ -11,7 +11,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    frame: true,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, '../../dist/preload/index.js'),
       contextIsolation: true,
