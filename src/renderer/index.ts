@@ -1,4 +1,10 @@
-import type { TabInfo } from '../main/tabManager';
+interface TabInfo {
+  id: string;
+  title: string;
+  url: string;
+  favicon?: string;
+  isActive: boolean;
+}
 
 // browserAPI is injected by the preload script
 declare const browserAPI: {

@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { TabInfo } from '../main/tabManager';
+
+interface TabInfo {
+  id: string;
+  title: string;
+  url: string;
+  favicon?: string;
+  isActive: boolean;
+}
 
 contextBridge.exposeInMainWorld('browserAPI', {
   // Tab actions
