@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld('browserAPI', {
   goForward: () => ipcRenderer.invoke('tab:go-forward'),
   reload: () => ipcRenderer.invoke('tab:reload'),
   getTabList: () => ipcRenderer.invoke('tab:list'),
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  toggleMaximizeWindow: () => ipcRenderer.invoke('window:maximize-toggle'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  isWindowMaximized: () => ipcRenderer.invoke('window:is-maximized'),
 
   // Events from main → renderer
   onTabUpdated: (cb: (tab: TabInfo) => void) => {

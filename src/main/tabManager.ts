@@ -17,7 +17,7 @@ export interface TabInfo {
   isActive: boolean;
 }
 
-const CHROME_HEIGHT = 80; // px reserved for tab bar + address bar
+const CHROME_HEIGHT = 84; // px reserved for the draggable header and nav bar
 
 export class TabManager {
   private tabs: Map<string, Tab> = new Map();
@@ -31,9 +31,7 @@ export class TabManager {
     this.window.on('resize', () => this.repositionActiveView());
   }
 
-  // ── Public API ─────────────────────────────────────────────────────────────
-
-  newTab(url: string = 'https://www.google.com'): string {
+  newTab(url: string = 'about:blank'): string {
     const id = randomUUID();
     const view = new WebContentsView({
       webPreferences: {
@@ -46,7 +44,6 @@ export class TabManager {
     const tab: Tab = { id, view, title: 'New Tab', url };
     this.tabs.set(id, tab);
 
-    // Wire up tab metadata updates → push to renderer
     view.webContents.on('page-title-updated', (_e, title) => {
       tab.title = title;
       this.pushTabUpdate(id);
@@ -77,7 +74,6 @@ export class TabManager {
     const tab = this.tabs.get(tabId);
     if (!tab) return;
 
-    // Remove view from window if it's currently attached
     if (this.activeTabId === tabId) {
       this.window.contentView.removeChildView(tab.view);
       this.activeTabId = null;
@@ -86,12 +82,11 @@ export class TabManager {
     tab.view.webContents.close();
     this.tabs.delete(tabId);
 
-    // Switch to the last remaining tab if any
     const remaining = [...this.tabs.keys()];
     if (remaining.length > 0) {
       this.switchTab(remaining[remaining.length - 1]);
     } else {
-      // No tabs left — open a blank one
+      // Keep a blank page ready for the planned custom new-tab UI.
       this.newTab();
     }
   }
@@ -100,7 +95,6 @@ export class TabManager {
     const tab = this.tabs.get(tabId);
     if (!tab) return;
 
-    // Detach current active view
     if (this.activeTabId && this.activeTabId !== tabId) {
       const current = this.tabs.get(this.activeTabId);
       if (current) {
@@ -149,8 +143,6 @@ export class TabManager {
     }));
   }
 
-  // ── Internals ──────────────────────────────────────────────────────────────
-
   private activeTab(): Tab | undefined {
     return this.activeTabId ? this.tabs.get(this.activeTabId) : undefined;
   }
@@ -171,6 +163,7 @@ export class TabManager {
   private pushTabUpdate(tabId: string): void {
     const tab = this.tabs.get(tabId);
     if (!tab) return;
+
     this.window.webContents.send('tab:updated', {
       id: tabId,
       title: tab.title,
@@ -186,8 +179,7 @@ export class TabManager {
 
   private normaliseUrl(url: string): string {
     if (/^https?:\/\//i.test(url)) return url;
-    if (/^[\w-]+:\/\//i.test(url)) return url;
-    // Treat as search if it contains spaces or has no dot
+    if (/^[\w-]+:/i.test(url)) return url;
     if (url.includes(' ') || !url.includes('.')) {
       return `https://www.google.com/search?q=${encodeURIComponent(url)}`;
     }

@@ -9,17 +9,28 @@
 </head>
 <body>
   <div id="chrome">
-    <!-- Tab bar -->
-    <div id="tab-bar">
-      <div id="tabs"></div>
-      <button id="btn-new-tab" title="New Tab">+</button>
+    <div id="header-surface">
+      <div id="tab-bar">
+        <div id="tabs"></div>
+        <button id="btn-new-tab" title="New Tab" aria-label="New Tab">+</button>
+      </div>
+      <div id="window-controls">
+        <button id="btn-minimize" title="Minimize" aria-label="Minimize window">
+          <span class="window-glyph glyph-minimize"></span>
+        </button>
+        <button id="btn-maximize" title="Maximize" aria-label="Maximize window">
+          <span class="window-glyph glyph-maximize"></span>
+        </button>
+        <button id="btn-close" title="Close" aria-label="Close window">
+          <span class="window-glyph glyph-close"></span>
+        </button>
+      </div>
     </div>
 
-    <!-- Navigation bar -->
     <div id="nav-bar">
-      <button id="btn-back" title="Back">&#8592;</button>
-      <button id="btn-forward" title="Forward">&#8594;</button>
-      <button id="btn-reload" title="Reload">&#8635;</button>
+      <button id="btn-back" title="Back" aria-label="Back">&#8592;</button>
+      <button id="btn-forward" title="Forward" aria-label="Forward">&#8594;</button>
+      <button id="btn-reload" title="Reload" aria-label="Reload">&#8635;</button>
       <input id="address-bar" type="text" placeholder="Search or enter URL..." spellcheck="false" />
     </div>
   </div>

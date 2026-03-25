@@ -12,6 +12,8 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     frame: false,
+    titleBarStyle: 'hidden',
+    backgroundColor: '#f5f5f3',
     webPreferences: {
       preload: path.join(__dirname, '../../dist/preload/index.js'),
       contextIsolation: true,
@@ -33,7 +35,7 @@ function createWindow() {
 
   // Once the chrome UI is ready, open a default tab
   mainWindow.webContents.once('did-finish-load', () => {
-    tabManager?.newTab('https://www.google.com');
+    tabManager?.newTab('about:blank');
   });
 }
 
@@ -69,6 +71,30 @@ ipcMain.handle('tab:reload', () => {
 
 ipcMain.handle('tab:list', () => {
   return tabManager?.getTabList() ?? [];
+});
+
+ipcMain.handle('window:minimize', () => {
+  mainWindow?.minimize();
+});
+
+ipcMain.handle('window:maximize-toggle', () => {
+  if (!mainWindow) return false;
+
+  if (mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+    return false;
+  }
+
+  mainWindow.maximize();
+  return true;
+});
+
+ipcMain.handle('window:close', () => {
+  mainWindow?.close();
+});
+
+ipcMain.handle('window:is-maximized', () => {
+  return mainWindow?.isMaximized() ?? false;
 });
 
 // ── App lifecycle ────────────────────────────────────────────────────────────

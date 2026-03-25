@@ -5,88 +5,109 @@
 }
 
 :root {
-  --chrome-bg: #1e1e2e;
-  --tab-bg: #2a2a3d;
-  --tab-active-bg: #313145;
-  --tab-hover-bg: #2f2f44;
-  --tab-text: #cdd6f4;
-  --tab-text-muted: #7f849c;
-  --accent: #89b4fa;
-  --nav-bg: #181825;
-  --input-bg: #313145;
-  --input-border: #45475a;
-  --input-focus: #89b4fa;
-  --btn-hover: #45475a;
-  --close-hover: #f38ba8;
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --app-bg: #f7f7f5;
+  --chrome-bg: #f5f5f3;
+  --header-bg: #efefec;
+  --tab-bg: #ecece8;
+  --tab-active-bg: #ffffff;
+  --tab-hover-bg: #e6e6e1;
+  --tab-text: #222222;
+  --tab-text-muted: #6d6d67;
+  --nav-bg: #f5f5f3;
+  --input-bg: #ffffff;
+  --input-border: #d8d8d2;
+  --input-focus: #a6a6a0;
+  --btn-hover: #e5e5df;
+  --close-hover: #e9d9d8;
+  --close-hover-text: #6f2b24;
+  --border: #ddddd7;
+  --selection: #d8e7ff;
+  --font: 'Segoe UI', 'SF Pro Text', system-ui, sans-serif;
 }
 
 html, body {
   height: 100%;
   overflow: hidden;
-  background: var(--chrome-bg);
+  background: var(--app-bg);
   font-family: var(--font);
   font-size: 13px;
   color: var(--tab-text);
   -webkit-app-region: no-drag;
 }
 
-/* ── Chrome shell ───────────────────────────────────────────────────────────── */
-
 #chrome {
   display: flex;
   flex-direction: column;
-  height: 80px; /* must match CHROME_HEIGHT in tabManager.ts */
+  height: 84px; /* must match CHROME_HEIGHT in tabManager.ts */
   background: var(--chrome-bg);
-  border-bottom: 1px solid #313145;
+  border-bottom: 1px solid var(--border);
 }
 
-/* ── Tab bar ────────────────────────────────────────────────────────────────── */
+#header-surface {
+  height: 42px;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px 5px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
 
 #tab-bar {
   display: flex;
   align-items: stretch;
-  height: 38px;
-  background: var(--nav-bg);
-  padding: 0 4px;
-  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-app-region: drag;
 }
 
-#tab-bar::-webkit-scrollbar { display: none; }
+#tab-bar::-webkit-scrollbar,
+#tabs::-webkit-scrollbar {
+  display: none;
+}
 
 #tabs {
   display: flex;
   align-items: stretch;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+  -webkit-app-region: drag;
 }
 
 .tab {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 10px 0 10px;
   min-width: 120px;
   max-width: 220px;
   height: 100%;
-  border-radius: 6px 6px 0 0;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
   background: var(--tab-bg);
   cursor: pointer;
   user-select: none;
-  transition: background 0.1s;
-  position: relative;
+  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
   flex-shrink: 0;
+  -webkit-app-region: no-drag;
 }
 
-.tab:hover { background: var(--tab-hover-bg); }
+.tab:hover {
+  background: var(--tab-hover-bg);
+}
 
 .tab.active {
   background: var(--tab-active-bg);
-  border-top: 2px solid var(--accent);
+  border-color: var(--border);
+  box-shadow: 0 1px 0 0 var(--tab-active-bg);
 }
 
 .tab-favicon {
@@ -100,9 +121,9 @@ html, body {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
-  background: var(--tab-text-muted);
-  border-radius: 50%;
-  opacity: 0.4;
+  border-radius: 3px;
+  background: #b8b8b0;
+  opacity: 0.45;
 }
 
 .tab-title {
@@ -114,83 +135,155 @@ html, body {
   color: var(--tab-text);
 }
 
-.tab.active .tab-title { color: #fff; }
-
 .tab-close {
-  flex-shrink: 0;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  flex-shrink: 0;
   border: none;
+  border-radius: 3px;
   background: transparent;
   color: var(--tab-text-muted);
   cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s, color 0.1s;
   padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s;
 }
 
 .tab-close:hover {
   background: var(--close-hover);
-  color: #fff;
+  color: var(--close-hover-text);
+}
+
+#btn-new-tab,
+#nav-bar button,
+#window-controls button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--tab-text-muted);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  -webkit-app-region: no-drag;
 }
 
 #btn-new-tab {
-  align-self: center;
-  flex-shrink: 0;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--tab-text-muted);
+  align-self: center;
+  flex-shrink: 0;
+  border-radius: 4px;
   font-size: 20px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s, color 0.1s;
 }
 
-#btn-new-tab:hover {
+#btn-new-tab:hover,
+#nav-bar button:hover,
+#window-controls button:hover {
   background: var(--btn-hover);
+  border-color: var(--border);
   color: var(--tab-text);
 }
 
-/* ── Navigation bar ─────────────────────────────────────────────────────────── */
+#window-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+#window-controls button {
+  width: 34px;
+  height: 30px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#btn-close:hover {
+  background: var(--close-hover);
+  border-color: #dcc4c1;
+  color: var(--close-hover-text);
+}
+
+.window-glyph {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+.glyph-minimize::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1px;
+  border-bottom: 1.5px solid currentColor;
+}
+
+.glyph-maximize::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid currentColor;
+  border-radius: 1px;
+}
+
+#btn-maximize.is-maximized .glyph-maximize::before {
+  inset: 1px 0 0 1px;
+}
+
+#btn-maximize.is-maximized .glyph-maximize::after {
+  content: '';
+  position: absolute;
+  inset: 0 1px 1px 0;
+  border: 1.5px solid currentColor;
+  border-radius: 1px;
+  background: var(--header-bg);
+}
+
+.glyph-close::before,
+.glyph-close::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: -1px;
+  width: 12px;
+  border-bottom: 1.5px solid currentColor;
+}
+
+.glyph-close::before {
+  transform: rotate(45deg);
+}
+
+.glyph-close::after {
+  transform: rotate(-45deg);
+}
 
 #nav-bar {
   display: flex;
   align-items: center;
   height: 42px;
-  padding: 0 8px;
-  gap: 6px;
-  background: var(--chrome-bg);
+  gap: 8px;
+  padding: 0 10px;
+  background: var(--nav-bg);
 }
 
 #nav-bar button {
-  flex-shrink: 0;
   width: 30px;
   height: 30px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--tab-text-muted);
+  border-radius: 4px;
   font-size: 16px;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.1s, color 0.1s;
-}
-
-#nav-bar button:hover {
-  background: var(--btn-hover);
-  color: var(--tab-text);
 }
 
 #nav-bar button:disabled {
@@ -201,22 +294,24 @@ html, body {
 #address-bar {
   flex: 1;
   height: 32px;
-  border-radius: 16px;
-  border: 1.5px solid var(--input-border);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
   background: var(--input-bg);
   color: var(--tab-text);
   padding: 0 14px;
   font-size: 13px;
   font-family: var(--font);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  -webkit-app-region: no-drag;
 }
 
 #address-bar:focus {
   border-color: var(--input-focus);
+  box-shadow: 0 0 0 1px #ecece7 inset;
 }
 
 #address-bar::selection {
-  background: var(--accent);
-  color: #1e1e2e;
+  background: var(--selection);
+  color: var(--tab-text);
 }
