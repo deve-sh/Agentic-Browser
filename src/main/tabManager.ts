@@ -1,5 +1,6 @@
 import { BrowserWindow, WebContentsView } from 'electron';
 import { randomUUID } from 'crypto';
+import type { PlaywrightManager, TabAction } from './playwrightManager';
 
 export interface Tab {
   id: string;
@@ -7,6 +8,8 @@ export interface Tab {
   title: string;
   url: string;
   favicon?: string;
+  cdpTargetId?: string;
+  cdpWebSocketUrl?: string;
 }
 
 export interface TabInfo {
@@ -22,10 +25,11 @@ const CHROME_HEIGHT = 84; // px reserved for the draggable header and nav bar
 export class TabManager {
   private tabs: Map<string, Tab> = new Map();
   private activeTabId: string | null = null;
-  private window: BrowserWindow;
 
-  constructor(window: BrowserWindow) {
-    this.window = window;
+  constructor(
+    private readonly window: BrowserWindow,
+    private readonly playwrightManager: PlaywrightManager,
+  ) {
 
     // Reposition content views when window is resized
     this.window.on('resize', () => this.repositionActiveView());
@@ -43,6 +47,7 @@ export class TabManager {
 
     const tab: Tab = { id, view, title: 'New Tab', url };
     this.tabs.set(id, tab);
+    this.hydrateAutomationMetadata(tab);
 
     view.webContents.on('page-title-updated', (_e, title) => {
       tab.title = title;
@@ -62,6 +67,10 @@ export class TabManager {
     view.webContents.on('page-favicon-updated', (_e, favicons) => {
       tab.favicon = favicons[0] ?? undefined;
       this.pushTabUpdate(id);
+    });
+
+    view.webContents.on('did-finish-load', () => {
+      this.hydrateAutomationMetadata(tab);
     });
 
     view.webContents.loadURL(this.normaliseUrl(url));
@@ -133,6 +142,15 @@ export class TabManager {
     this.activeTab()?.view.webContents.reload();
   }
 
+  async handleAction(tabId: string, action: TabAction): Promise<void> {
+    const targetId = this.tabs.get(tabId)?.cdpTargetId;
+    if (!targetId) {
+      throw new Error(`Tab ${tabId} does not have a resolved CDP target.`);
+    }
+
+    await this.playwrightManager.handleAction(targetId, action);
+  }
+
   getTabList(): TabInfo[] {
     return [...this.tabs.values()].map((t) => ({
       id: t.id,
@@ -175,6 +193,18 @@ export class TabManager {
 
   private pushTabListUpdate(): void {
     this.window.webContents.send('tab:list-updated', this.getTabList());
+  }
+
+  private hydrateAutomationMetadata(tab: Tab): void {
+    void this.playwrightManager
+      .resolveTabMetadata(tab.view.webContents)
+      .then((metadata) => {
+        tab.cdpTargetId = metadata.cdpTargetId;
+        tab.cdpWebSocketUrl = metadata.cdpWebSocketUrl;
+      })
+      .catch((error) => {
+        console.warn(`Failed to hydrate automation metadata for tab ${tab.id}.`, error);
+      });
   }
 
   private normaliseUrl(url: string): string {
