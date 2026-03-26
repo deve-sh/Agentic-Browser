@@ -35,3 +35,11 @@ The Preload script exposes the main process functionality to the renderer via th
 The renderer just invokes the functions it needs or sends the events it needs acknowledged, and it's up to the main process to handle them.
 
 The preload also exposes global listener functions for the renderer to mount and listen to events received from the main process via `onTabUpdated` being invoked once and then till cleanup listening to the `tab:updated` event from the main process and rendering tabs and their details accordingly.
+
+### How PlayWright plugs in
+
+- When the Electron app loads, it by default starts a [remote debugging session](chrome://inspect/#remote-debugging) for the entire Chromium instance at a WS URL (`ws://127.0.0.1:<port>/<session>/<uuid>`). This is so that we can plug into this remote debugging WS URL via PlayWright's `connectOverCDP` function.
+- On each tab load, the TabManager initializes the loading of a `WebContentsView` which is a mirror image of a tab running in the Chromium instance.
+- A `PlayWrightManager` class is also instantiated during the app load, which connects over CDP to the Chromium Remote Debugging session.
+- The `TabManager` communicates with the `PlayWrightManager` instance and asks for the CDP `cdpTargetId` and `cdpWebSocketUrl` for the specific WebContentsView per tab and stores it for use in performing actions such as click, fill, focus, snapshot later on agent request via a tool-call.
+- The `PlayWrightManager` class takes care of using the Remote Debugging central URL to list targets and filter out the webcontents that are running and finding the right one for which the url and target is being requested.
