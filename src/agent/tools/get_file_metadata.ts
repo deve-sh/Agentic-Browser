@@ -39,7 +39,12 @@ const getFileMetadataTool = {
 				},
 			};
 		} catch (error) {
-			return { error: error.message };
+			return {
+				error:
+					error instanceof Error
+						? error.message
+						: "File metadata lookup failed.",
+			};
 		}
 	},
 };

@@ -83,7 +83,9 @@ const readFileTool = {
 			if (errorReadingFileMetadata || !fileData || !fileData.mimeType)
 				return onComplete(cacheKey, {
 					error:
-						errorReadingFileMetadata || new Error("File could not be read."),
+						typeof errorReadingFileMetadata === "string"
+							? new Error(errorReadingFileMetadata)
+							: new Error("File could not be read."),
 				});
 
 			if (
@@ -134,7 +136,12 @@ const readFileTool = {
 
 			return onComplete(cacheKey, { contents: summarizedFile });
 		} catch (error) {
-			return onComplete(cacheKey, { error });
+			return onComplete(cacheKey, {
+				error:
+					error instanceof Error
+						? error
+						: new Error("Something went wrong while reading the file."),
+			});
 		}
 	},
 };

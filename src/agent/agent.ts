@@ -1,4 +1,5 @@
 import llmTools from "./tools";
+import type { BrowserSessionBridge } from "./types";
 import AgentSession from "./session";
 
 import logger from "./utils/logger";
@@ -28,10 +29,16 @@ export class Agent {
 		logger.setLogger(init?.logger || console);
 	}
 
-	async startSession(options: { llm: LLMID; model: LLMModel }) {
+	async startSession(options: {
+		browser?: BrowserSessionBridge;
+		llm: LLMID;
+		model: LLMModel;
+	}) {
 		const agentSession = new AgentSession();
 
 		await agentSession.initialize(options);
+
+		if (options?.browser) agentSession.attachBrowser(options.browser);
 
 		this.sessions.set(agentSession.id, agentSession);
 

@@ -4,6 +4,7 @@ import type {
 } from "openai/resources/responses/responses.mjs";
 
 import llms from "./providers/index";
+import type { BrowserSessionBridge } from "./types";
 import { LLM, LLMID, LLMModel, Message, ToolCall } from "./types";
 
 import Agent from "./agent";
@@ -34,6 +35,7 @@ class AgentSession {
 	// conversation: Partial<Conversation>;
 
 	subscribers: Set<SessionSubscriber> = new Set();
+	private browser: BrowserSessionBridge | null = null;
 
 	private async setModel(model: LLMModel) {
 		// Can be changed per message per call too
@@ -84,6 +86,18 @@ class AgentSession {
 		this.subscribers.add(subscriber);
 
 		return () => this.subscribers.delete(subscriber);
+	}
+
+	attachBrowser(browser: BrowserSessionBridge) {
+		this.browser = browser;
+	}
+
+	requireBrowser() {
+		if (!this.browser) {
+			throw new Error("This session is not attached to a browser tab.");
+		}
+
+		return this.browser;
 	}
 
 	async estimateCurrentTokenUsage() {

@@ -1,6 +1,17 @@
 import { BrowserWindow, WebContentsView } from 'electron';
 import { randomUUID } from 'crypto';
-import type { PlaywrightManager, TabAction } from './playwrightManager';
+import type {
+  BrowserActionRequest,
+  BrowserActionResult,
+  BrowserFindResult,
+  BrowserNavigateResult,
+  BrowserSessionBridge,
+  BrowserSnapshotOptions,
+  BrowserSnapshotResult,
+  BrowserWaitRequest,
+  BrowserWaitResult,
+} from '../agent/types';
+import type { PlaywrightManager } from './playwrightManager';
 import type AgentSession from '../agent/session';
 import type Agent from '../agent/agent';
 
@@ -12,6 +23,7 @@ export interface Tab {
   favicon?: string;
   cdpTargetId?: string;
   cdpWebSocketUrl?: string;
+  agentSession?: AgentSession;
 }
 
 export interface TabInfo {
@@ -27,7 +39,6 @@ const CHROME_HEIGHT = 84; // px reserved for the draggable header and nav bar
 export class TabManager {
   private tabs: Map<string, Tab> = new Map();
   private activeTabId: string | null = null;
-  private agentSession: AgentSession | null = null;
 
   constructor(
     private readonly window: BrowserWindow,
@@ -51,8 +62,16 @@ export class TabManager {
     const tab: Tab = { id, view, title: 'New Tab', url };
     this.tabs.set(id, tab);
     this.hydrateAutomationMetadata(tab);
-    this.agentManager.startSession({ llm: 'openai', model: 'gpt-4o-mini' })
-      .then(initializedSession => (this.agentSession = initializedSession));
+    void this.agentManager
+      .startSession(
+        { llm: 'openai', model: 'gpt-4o-mini', browser: this.createBrowserBridge(id) },
+      )
+      .then((initializedSession) => {
+        tab.agentSession = initializedSession;
+      })
+      .catch((error) => {
+        console.warn(`Failed to initialize agent session for tab ${id}.`, error);
+      });
 
     view.webContents.on('page-title-updated', (_e, title) => {
       tab.title = title;
@@ -147,13 +166,29 @@ export class TabManager {
     this.activeTab()?.view.webContents.reload();
   }
 
-  async handleAction(tabId: string, action: TabAction): Promise<void> {
-    const targetId = this.tabs.get(tabId)?.cdpTargetId;
-    if (!targetId) {
-      throw new Error(`Tab ${tabId} does not have a resolved CDP target.`);
-    }
+  async snapshot(tabId: string, options: BrowserSnapshotOptions = {}): Promise<BrowserSnapshotResult> {
+    const targetId = this.requireTargetId(tabId);
+    return this.playwrightManager.snapshot(targetId, options);
+  }
 
-    await this.playwrightManager.handleAction(targetId, action);
+  async navigate(tabId: string, url: string): Promise<BrowserNavigateResult> {
+    const targetId = this.requireTargetId(tabId);
+    return this.playwrightManager.navigate(targetId, this.normaliseUrl(url));
+  }
+
+  async handleAction(tabId: string, action: BrowserActionRequest): Promise<BrowserActionResult> {
+    const targetId = this.requireTargetId(tabId);
+    return this.playwrightManager.handleAction(targetId, action);
+  }
+
+  async findElements(tabId: string, query: BrowserWaitRequest): Promise<BrowserFindResult> {
+    const targetId = this.requireTargetId(tabId);
+    return this.playwrightManager.findElements(targetId, query);
+  }
+
+  async waitForElement(tabId: string, query: BrowserWaitRequest): Promise<BrowserWaitResult> {
+    const targetId = this.requireTargetId(tabId);
+    return this.playwrightManager.waitForElement(targetId, query);
   }
 
   getTabList(): TabInfo[] {
@@ -168,6 +203,15 @@ export class TabManager {
 
   private activeTab(): Tab | undefined {
     return this.activeTabId ? this.tabs.get(this.activeTabId) : undefined;
+  }
+
+  private requireTargetId(tabId: string): string {
+    const targetId = this.tabs.get(tabId)?.cdpTargetId;
+    if (!targetId) {
+      throw new Error(`Tab ${tabId} does not have a resolved CDP target.`);
+    }
+
+    return targetId;
   }
 
   private repositionActiveView(): void {
@@ -210,6 +254,16 @@ export class TabManager {
       .catch((error) => {
         console.warn(`Failed to hydrate automation metadata for tab ${tab.id}.`, error);
       });
+  }
+
+  private createBrowserBridge(tabId: string): BrowserSessionBridge {
+    return {
+      navigate: (url: string) => this.navigate(tabId, url),
+      snapshot: (options: BrowserSnapshotOptions) => this.snapshot(tabId, options),
+      handleAction: (action: BrowserActionRequest) => this.handleAction(tabId, action),
+      findElements: (query: BrowserWaitRequest) => this.findElements(tabId, query),
+      waitForElement: (query: BrowserWaitRequest) => this.waitForElement(tabId, query),
+    };
   }
 
   private normaliseUrl(url: string): string {

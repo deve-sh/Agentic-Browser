@@ -21,7 +21,9 @@
 	},
 	"dependencies": {
 		"detect-port": "^2.1.0",
+		"file-type": "^21.3.4",
 		"openai": "^6.33.0",
-		"playwright": "^1.44.0"
+		"playwright": "^1.44.0",
+		"tiktoken": "^1.0.22"
 	}
 }
