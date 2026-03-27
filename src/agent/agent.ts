@@ -10,7 +10,7 @@ type AgentInit = {
 	logger?: typeof console;
 };
 
-class Agent {
+export class Agent {
 	static tools: typeof llmTools = llmTools;
 
 	sessions: Map<string, any> = new Map();

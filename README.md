@@ -45,6 +45,8 @@ src/
 
 - [x] Wire up `webContents.debugger` per tab for CDP access
 - [x] Connect Playwright via `chromium.connectOverCDP()` per tab
-- Add the agent chat panel per tab
-- Implement snapshot/compaction logic
-- Add tool definitions and agent loop
+- [x] Add agent manager and session manager
+- [x] Instantiate agent and connect session per tab initialization
+- [ ] Add tool definitions and agent loop
+- [ ] Add the agent chat panel per tab
+- [ ] Implement snapshot/compaction logic

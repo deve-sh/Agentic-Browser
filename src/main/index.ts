@@ -3,10 +3,12 @@ import * as path from "path";
 
 import { PlaywrightManager } from "./playwrightManager";
 import { TabManager } from "./tabManager";
+import { Agent } from "../agent/agent";
 
 let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let playwrightManager: PlaywrightManager | null = null;
+let agentManager: Agent | null = null;
 
 async function createWindow() {
 	mainWindow = new BrowserWindow({
@@ -34,7 +36,11 @@ async function createWindow() {
 		);
 	}
 
-	tabManager = new TabManager(mainWindow, playwrightManager);
+	if (!agentManager) {
+		throw new Error("Agent was not initialized before creating the window.");
+	}
+
+	tabManager = new TabManager(mainWindow, playwrightManager, agentManager);
 
 	// Open devtools for the chrome UI in dev
 	// mainWindow.webContents.openDevTools({ mode: 'detach' });
@@ -122,6 +128,10 @@ async function bootstrap(): Promise<void> {
 	await app.whenReady();
 
 	playwrightManager = new PlaywrightManager(availableRemoteDebuggingPort);
+	agentManager = new Agent({
+		runtimeConfig: { debug: process.env.NODE_ENV === "development" },
+		logger: console,
+	});
 	await playwrightManager.connect();
 	await createWindow();
 }

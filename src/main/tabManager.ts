@@ -1,6 +1,8 @@
 import { BrowserWindow, WebContentsView } from 'electron';
 import { randomUUID } from 'crypto';
 import type { PlaywrightManager, TabAction } from './playwrightManager';
+import type AgentSession from '../agent/session';
+import type Agent from '../agent/agent';
 
 export interface Tab {
   id: string;
@@ -25,12 +27,13 @@ const CHROME_HEIGHT = 84; // px reserved for the draggable header and nav bar
 export class TabManager {
   private tabs: Map<string, Tab> = new Map();
   private activeTabId: string | null = null;
+  private agentSession: AgentSession | null = null;
 
   constructor(
     private readonly window: BrowserWindow,
     private readonly playwrightManager: PlaywrightManager,
+    private readonly agentManager: Agent
   ) {
-
     // Reposition content views when window is resized
     this.window.on('resize', () => this.repositionActiveView());
   }
@@ -48,6 +51,8 @@ export class TabManager {
     const tab: Tab = { id, view, title: 'New Tab', url };
     this.tabs.set(id, tab);
     this.hydrateAutomationMetadata(tab);
+    this.agentManager.startSession({ llm: 'openai', model: 'gpt-4o-mini' })
+      .then(initializedSession => (this.agentSession = initializedSession));
 
     view.webContents.on('page-title-updated', (_e, title) => {
       tab.title = title;
