@@ -21,22 +21,6 @@ For development with watch mode:
 npm run dev
 ```
 
-## Project Structure
-
-```
-src/
-  main/
-    index.ts          # Electron main process, IPC handlers, window setup
-    tabManager.ts     # WebContentsView lifecycle, tab state, CDP exposure
-    playwrightManager.ts  # Handles CDP Connection to the underlying Electron Chromium instance and exposes APIs to automate things like clicking, filling etc
-  preload/
-    index.ts          # Secure IPC bridge exposed to renderer via contextBridge
-  renderer/
-    index.html        # Chrome UI shell
-    index.ts          # Tab bar, address bar, navigation UI logic
-    style.css         # Browser chrome styles
-```
-
 ## Architecture Notes
 
 - Each tab gets its own `WebContentsView` with isolated `webPreferences`
