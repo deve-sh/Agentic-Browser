@@ -36,6 +36,9 @@ class AgentSession {
 
 	subscribers: Set<SessionSubscriber> = new Set();
 	private _browser: BrowserSessionBridge | null = null;
+	private currentProcessingPromise: Promise<void> | null = null;
+	private currentResponseStream: { controller: AbortController } | null = null;
+	private cancelRequested = false;
 
 	private async setModel(model: LLMModel) {
 		// Can be changed per message per call too
@@ -100,6 +103,21 @@ class AgentSession {
 		return this._browser;
 	}
 
+	get isProcessing() {
+		return this.currentProcessingPromise !== null;
+	}
+
+	cancelCurrentProcess() {
+		if (!this.currentProcessingPromise) {
+			return false;
+		}
+
+		this.cancelRequested = true;
+		this.currentResponseStream?.controller.abort();
+
+		return true;
+	}
+
 	async estimateCurrentTokenUsage() {
 		return countCurrentTokenUsage(getEncoder(this.model), this.messages);
 	}
@@ -143,6 +161,23 @@ class AgentSession {
 	}
 
 	async sendMessage(message?: Message) {
+		if (this.currentProcessingPromise) {
+			throw new Error("A message is already being processed for this session.");
+		}
+
+		const processingPromise = this.processMessageLoop(message);
+		this.currentProcessingPromise = processingPromise;
+
+		try {
+			await processingPromise;
+		} finally {
+			this.currentProcessingPromise = null;
+			this.currentResponseStream = null;
+			this.cancelRequested = false;
+		}
+	}
+
+	private async processMessageLoop(message?: Message) {
 		logger.get()?.info(`[Session: ${this.id}]`, `Sending message to LLM.`);
 
 		// Initializing messages
@@ -167,17 +202,41 @@ class AgentSession {
 			max_output_tokens: this.modelProperties.MAX_OUTPUT_TOKENS,
 			// conversation: this.conversation.id,
 		});
+		this.currentResponseStream = responseStream as { controller: AbortController };
 
 		let responseText = "";
+		let startedStreaming = false;
 
-		for await (const event of responseStream) {
-			if (event.type === "response.output_text.delta") {
-				if (!responseText) this.notifySubscribers({ type: "chunks-start" });
+		try {
+			for await (const event of responseStream) {
+				if (event.type === "response.output_text.delta") {
+					if (!responseText) {
+						startedStreaming = true;
+						this.notifySubscribers({ type: "chunks-start" });
+					}
 
-				responseText += event.delta;
+					responseText += event.delta;
 
-				this.notifySubscribers({ type: "chunk", content: event.delta });
+					this.notifySubscribers({ type: "chunk", content: event.delta });
+				}
 			}
+		} catch (error) {
+			if (!this.isAbortError(error)) {
+				throw error;
+			}
+
+			if (startedStreaming) {
+				this.notifySubscribers({ type: "chunks-end" });
+			}
+
+			if (responseText) {
+				this.messages.push({
+					role: "assistant",
+					content: responseText,
+				});
+			}
+
+			return;
 		}
 
 		const responseReceived = await responseStream.finalResponse();
@@ -191,6 +250,8 @@ class AgentSession {
 				content: responseText,
 			});
 		}
+
+		this.currentResponseStream = null;
 
 		// Time to process the tool call requests
 		// Could be done in a sandbox, but that's an implementation detail.
@@ -304,9 +365,18 @@ class AgentSession {
 		// with the outcomes of the tool executions.
 		// Thus, trigger the loop again with the new set of messages now.
 		if (
+			!this.cancelRequested &&
 			responseReceived.output.some((output) => output.type === "function_call")
 		)
-			await this.sendMessage();
+			await this.processMessageLoop();
+	}
+
+	private isAbortError(error: unknown) {
+		return (
+			error instanceof Error &&
+			(error.name === "AbortError" ||
+				error.message.toLowerCase().includes("aborted"))
+		);
 	}
 }
 

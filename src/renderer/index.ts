@@ -16,6 +16,11 @@ interface AgentStreamEvent {
   content?: string;
 }
 
+interface AgentProcessingState {
+  tabId: string;
+  isProcessing: boolean;
+}
+
 declare const marked: {
   parse: (markdown: string, options?: { breaks?: boolean; gfm?: boolean }) => string;
 };
@@ -38,11 +43,14 @@ declare const browserAPI: {
   closeWindow: () => Promise<void>;
   isWindowMaximized: () => Promise<boolean>;
   sendAgentMessage: (tabId: string, message: string) => Promise<void>;
+  cancelAgentMessage: (tabId: string) => Promise<boolean>;
   getAgentMessages: (tabId: string) => Promise<ChatMessage[]>;
+  isAgentProcessing: (tabId: string) => Promise<boolean>;
   onTabUpdated: (cb: (tab: TabInfo) => void) => void;
   onTabListUpdated: (cb: (tabs: TabInfo[]) => void) => void;
   onAgentMessagesUpdated: (cb: (payload: { tabId: string; messages: ChatMessage[] }) => void) => void;
   onAgentStream: (cb: (payload: { tabId: string; chunk: AgentStreamEvent }) => void) => void;
+  onAgentProcessingState: (cb: (payload: AgentProcessingState) => void) => void;
 };
 
 let tabs: TabInfo[] = [];
@@ -50,6 +58,7 @@ const chatMessagesByTab = new Map<string, ChatMessage[]>();
 const optimisticMessagesByTab = new Map<string, ChatMessage[]>();
 const streamingAssistantByTab = new Map<string, string>();
 const pendingTabs = new Set<string>();
+const cancelRequestedTabs = new Set<string>();
 
 const tabsEl = document.getElementById('tabs')!;
 const btnNewTab = document.getElementById('btn-new-tab') as HTMLButtonElement;
@@ -64,6 +73,7 @@ const chatTitle = document.getElementById('chat-title') as HTMLHeadingElement;
 const chatMessagesEl = document.getElementById('chat-messages') as HTMLDivElement;
 const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const chatInput = document.getElementById('chat-input') as HTMLTextAreaElement;
+const chatCancel = document.getElementById('chat-cancel') as HTMLButtonElement;
 const chatSend = document.getElementById('chat-send') as HTMLButtonElement;
 
 function renderMarkdown(content: string): string {
@@ -146,9 +156,12 @@ function renderChat() {
   ];
   const streamingMessage = streamingAssistantByTab.get(currentTab.id);
   const isPending = pendingTabs.has(currentTab.id);
+  const isCancelling = cancelRequestedTabs.has(currentTab.id);
 
-  chatInput.disabled = false;
+  chatInput.disabled = isPending;
   chatSend.disabled = isPending;
+  chatCancel.hidden = !isPending;
+  chatCancel.disabled = isCancelling;
 
   if (!messages.length && !streamingMessage) {
     chatMessagesEl.appendChild(
@@ -212,6 +225,16 @@ async function syncActiveChat(forceRefresh: boolean = false) {
     chatMessagesByTab.set(currentTab.id, messages);
   }
 
+  if (!pendingTabs.has(currentTab.id)) {
+    const isProcessing = await browserAPI.isAgentProcessing(currentTab.id);
+    if (isProcessing) {
+      pendingTabs.add(currentTab.id);
+    } else {
+      pendingTabs.delete(currentTab.id);
+      cancelRequestedTabs.delete(currentTab.id);
+    }
+  }
+
   renderChat();
 }
 
@@ -264,6 +287,7 @@ chatForm.addEventListener('submit', async (event) => {
 
   const originalInputValue = content;
   pendingTabs.add(currentTab.id);
+  cancelRequestedTabs.delete(currentTab.id);
   optimisticMessagesByTab.set(currentTab.id, [
     ...(optimisticMessagesByTab.get(currentTab.id) ?? []),
     { role: 'user', content },
@@ -275,11 +299,28 @@ chatForm.addEventListener('submit', async (event) => {
   try {
     await browserAPI.sendAgentMessage(currentTab.id, content);
   } catch (error) {
+    pendingTabs.delete(currentTab.id);
+    cancelRequestedTabs.delete(currentTab.id);
     optimisticMessagesByTab.delete(currentTab.id);
     chatInput.value = originalInputValue;
     throw error;
   } finally {
-    pendingTabs.delete(currentTab.id);
+    renderChat();
+  }
+});
+
+chatCancel.addEventListener('click', async () => {
+  const currentTab = activeTab();
+  if (!currentTab || !pendingTabs.has(currentTab.id)) {
+    return;
+  }
+
+  cancelRequestedTabs.add(currentTab.id);
+  renderChat();
+
+  try {
+    await browserAPI.cancelAgentMessage(currentTab.id);
+  } finally {
     renderChat();
   }
 });
@@ -307,6 +348,19 @@ browserAPI.onTabListUpdated((list) => {
 browserAPI.onAgentMessagesUpdated(({ tabId, messages }) => {
   chatMessagesByTab.set(tabId, messages);
   optimisticMessagesByTab.delete(tabId);
+  if (activeTab()?.id === tabId) {
+    renderChat();
+  }
+});
+
+browserAPI.onAgentProcessingState(({ tabId, isProcessing }) => {
+  if (isProcessing) {
+    pendingTabs.add(tabId);
+  } else {
+    pendingTabs.delete(tabId);
+    cancelRequestedTabs.delete(tabId);
+  }
+
   if (activeTab()?.id === tabId) {
     renderChat();
   }

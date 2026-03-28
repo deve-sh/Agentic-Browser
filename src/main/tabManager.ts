@@ -52,6 +52,11 @@ type ChatMessage = {
   content: string;
 };
 
+type AgentProcessingState = {
+  tabId: string;
+  isProcessing: boolean;
+};
+
 export class TabManager {
   private tabs: Map<string, Tab> = new Map();
   private activeTabId: string | null = null;
@@ -247,14 +252,33 @@ export class TabManager {
       return;
     }
 
-    const sendPromise = tab.agentSession.sendMessage({
+    const messageProcessingPromise = tab.agentSession.sendMessage({
       role: 'user',
       content: trimmedMessage,
     });
+
+    this.pushAgentProcessingState(tabId, true);
     this.pushAgentMessages(tabId);
 
-    await sendPromise;
-    this.pushAgentMessages(tabId);
+    try {
+      await messageProcessingPromise;
+    } finally {
+      this.pushAgentMessages(tabId);
+      this.pushAgentProcessingState(tabId, false);
+    }
+  }
+
+  cancelAgentMessage(tabId: string): boolean {
+    const tab = this.tabs.get(tabId);
+    if (!tab?.agentSession) {
+      return false;
+    }
+
+    return tab.agentSession.cancelCurrentProcess();
+  }
+
+  isAgentProcessing(tabId: string): boolean {
+    return this.tabs.get(tabId)?.agentSession?.isProcessing ?? false;
   }
 
   getAgentMessages(tabId: string): ChatMessage[] {
@@ -330,6 +354,13 @@ export class TabManager {
       tabId,
       messages: this.getAgentMessages(tabId),
     } satisfies { tabId: string; messages: ChatMessage[] });
+  }
+
+  private pushAgentProcessingState(tabId: string, isProcessing: boolean): void {
+    this.window.webContents.send('agent:processing-state', {
+      tabId,
+      isProcessing,
+    } satisfies AgentProcessingState);
   }
 
   private hydrateAutomationMetadata(tab: Tab): void {

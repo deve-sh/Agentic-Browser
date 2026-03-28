@@ -97,6 +97,14 @@ ipcMain.handle("agent:get-messages", (_event, tabId: string) => {
 	return tabManager?.getAgentMessages(tabId) ?? [];
 });
 
+ipcMain.handle("agent:cancel-message", (_event, tabId: string) => {
+	return tabManager?.cancelAgentMessage(tabId) ?? false;
+});
+
+ipcMain.handle("agent:is-processing", (_event, tabId: string) => {
+	return tabManager?.isAgentProcessing(tabId) ?? false;
+});
+
 ipcMain.handle("window:minimize", () => {
 	mainWindow?.minimize();
 });

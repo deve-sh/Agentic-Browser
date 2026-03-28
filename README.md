@@ -38,8 +38,8 @@ npm run dev
 - [x] Add tool definitions and agent loop
 - [x] Add the agent chat panel per tab
 - [x] Markdown rendering on the frontend for messages.
+- [x] While the message and content processing happens, we have to block the textarea on the user's end from sending any more messages (Or add a "steer" operation similar to Codex which allows the user to send a message right after the next tool call).
 - [ ] Implement snapshot/compaction logic for message stream per tab (Cloning messages for user view but compacting messages for agent view)
 - [ ] Integrate the whole message back and forth flow from the agent with details on when a tool call is executing.
-- [ ] While the message and content processing happens, we have to block the textarea on the user's end from sending any more messages (Or add a "steer" operation similar to Codex which allows the user to send a message right after the next tool call).
 
 ### More that can be done for this 

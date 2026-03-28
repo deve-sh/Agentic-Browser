@@ -51,7 +51,10 @@
           rows="4"
           placeholder="Ask the agent to inspect, navigate, or get something done..."
         ></textarea>
-        <button id="chat-send" type="submit">Send</button>
+        <div id="chat-actions">
+          <button id="chat-cancel" type="button" hidden>Cancel</button>
+          <button id="chat-send" type="submit">Send</button>
+        </div>
       </form>
     </aside>
     <section id="browser-stage" aria-hidden="true"></section>

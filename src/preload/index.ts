@@ -18,6 +18,11 @@ interface AgentStreamEvent {
   content?: string;
 }
 
+interface AgentProcessingState {
+  tabId: string;
+  isProcessing: boolean;
+}
+
 contextBridge.exposeInMainWorld('browserAPI', {
   // Tab actions
   newTab: (url?: string) => ipcRenderer.invoke('tab:new', url),
@@ -34,7 +39,9 @@ contextBridge.exposeInMainWorld('browserAPI', {
   isWindowMaximized: () => ipcRenderer.invoke('window:is-maximized'),
   sendAgentMessage: (tabId: string, message: string) =>
     ipcRenderer.invoke('agent:send-message', tabId, message),
+  cancelAgentMessage: (tabId: string) => ipcRenderer.invoke('agent:cancel-message', tabId),
   getAgentMessages: (tabId: string) => ipcRenderer.invoke('agent:get-messages', tabId),
+  isAgentProcessing: (tabId: string) => ipcRenderer.invoke('agent:is-processing', tabId),
 
   // Events from main → renderer
   onTabUpdated: (cb: (tab: TabInfo) => void) => {
@@ -48,5 +55,8 @@ contextBridge.exposeInMainWorld('browserAPI', {
   },
   onAgentStream: (cb: (payload: { tabId: string; chunk: AgentStreamEvent }) => void) => {
     ipcRenderer.on('agent:stream', (_e, payload) => cb(payload));
+  },
+  onAgentProcessingState: (cb: (payload: AgentProcessingState) => void) => {
+    ipcRenderer.on('agent:processing-state', (_e, payload) => cb(payload));
   },
 });

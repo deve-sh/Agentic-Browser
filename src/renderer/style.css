@@ -540,6 +540,32 @@ html, body {
   cursor: not-allowed;
 }
 
+#chat-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+#chat-cancel {
+  min-width: 88px;
+  height: 36px;
+  border: 1px solid var(--input-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--tab-text);
+  cursor: pointer;
+  font: inherit;
+}
+
+#chat-cancel[hidden] {
+  display: none;
+}
+
+#chat-cancel:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 #browser-stage {
   flex: 1;
   min-width: 500px;
