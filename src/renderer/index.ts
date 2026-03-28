@@ -16,6 +16,14 @@ interface AgentStreamEvent {
   content?: string;
 }
 
+declare const marked: {
+  parse: (markdown: string, options?: { breaks?: boolean; gfm?: boolean }) => string;
+};
+
+declare const DOMPurify: {
+  sanitize: (dirty: string) => string;
+};
+
 declare const browserAPI: {
   newTab: (url?: string) => Promise<string>;
   closeTab: (tabId: string) => Promise<void>;
@@ -57,6 +65,15 @@ const chatMessagesEl = document.getElementById('chat-messages') as HTMLDivElemen
 const chatForm = document.getElementById('chat-form') as HTMLFormElement;
 const chatInput = document.getElementById('chat-input') as HTMLTextAreaElement;
 const chatSend = document.getElementById('chat-send') as HTMLButtonElement;
+
+function renderMarkdown(content: string): string {
+  const renderedHtml = marked.parse(content, {
+    breaks: true,
+    gfm: true,
+  });
+
+  return DOMPurify.sanitize(renderedHtml);
+}
 
 function activeTab(): TabInfo | undefined {
   return tabs.find((tab) => tab.isActive);
@@ -166,7 +183,7 @@ function buildChatBubble(
 ): HTMLDivElement {
   const bubble = document.createElement('div');
   bubble.className = `chat-message ${role}${isStreaming ? ' streaming' : ''}`;
-  bubble.textContent = content;
+  bubble.innerHTML = renderMarkdown(content);
   return bubble;
 }
 

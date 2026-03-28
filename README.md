@@ -15,7 +15,7 @@ npm install
 npm start
 ```
 
-For development with watch mode:
+To start the app:
 
 ```bash
 npm run dev
@@ -41,3 +41,5 @@ npm run dev
 - [ ] Integrate the whole message back and forth flow from the agent with details on when a tool call is executing.
 - [ ] Markdown rendering on the frontend for messages.
 - [ ] While the message and content processing happens, we have to block the textarea on the user's end from sending any more messages (Or add a "steer" operation similar to Codex which allows the user to send a message right after the next tool call).
+
+### More that can be done for this 

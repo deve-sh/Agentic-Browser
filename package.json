@@ -21,7 +21,9 @@
 	},
 	"dependencies": {
 		"detect-port": "^2.1.0",
+		"dompurify": "^3.3.3",
 		"dotenv": "^17.3.1",
+		"marked": "^17.0.5",
 		"mime-type": "^5.0.3",
 		"openai": "^6.33.0",
 		"playwright": "^1.44.0",
