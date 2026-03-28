@@ -5,7 +5,7 @@ import type {
 
 import llms from "./providers/index";
 import type { BrowserSessionBridge } from "./types";
-import { LLM, LLMID, LLMModel, Message, ToolCall } from "./types";
+import type { LLM, LLMID, LLMModel, Message } from "./types";
 
 import Agent from "./agent";
 import {
@@ -27,7 +27,7 @@ class AgentSession {
 	id: string = crypto.randomUUID();
 
 	messages: Message[] = [];
-	recordedToolCalls: ToolCall[] = [];
+	messagesToSendToLLM: Message[] = [];
 
 	llm: LLM = llms["openai"];
 	model: LLMModel = "gpt-4o-mini";
@@ -75,7 +75,7 @@ class AgentSession {
 		await this.setModel(options.model);
 
 		this.messages = [];
-		this.recordedToolCalls = [];
+		this.messagesToSendToLLM = [];
 
 		// Why remove this? Because we want to manage messages state and compaction ourselves.
 		// this.conversation = await this.llm.sdk.conversations.create();
@@ -119,7 +119,10 @@ class AgentSession {
 	}
 
 	async estimateCurrentTokenUsage() {
-		return countCurrentTokenUsage(getEncoder(this.model), this.messages);
+		return countCurrentTokenUsage(
+			getEncoder(this.model),
+			this.messagesToSendToLLM,
+		);
 	}
 
 	get compactionPoint() {
@@ -148,16 +151,23 @@ class AgentSession {
 	async compactMessages() {
 		logger.get()?.info(`[Session: ${this.id}]`, `Compacting messages.`);
 
+		const recentMessagesToKeep =
+			this.messagesToSendToLLM.length >= 6
+				? this.messagesToSendToLLM.slice(-3)
+				: [];
 		const compactedMessagesList = await this.llm.sdk.responses.compact({
 			model: this.model,
-			input: (this.messages.length >= 6
-				? this.messages.slice(0, -3)
-				: this.messages) as Parameters<
+			input: (this.messagesToSendToLLM.length >= 6
+				? this.messagesToSendToLLM.slice(0, -3)
+				: this.messagesToSendToLLM) as Parameters<
 				typeof this.llm.sdk.responses.compact
 			>[0]["input"],
 		});
 
-		this.messages = compactedMessagesList.output as Message[];
+		this.messagesToSendToLLM = [
+			...(compactedMessagesList.output as Message[]),
+			...recentMessagesToKeep,
+		];
 	}
 
 	async sendMessage(message?: Message) {
@@ -182,7 +192,7 @@ class AgentSession {
 
 		// Initializing messages
 		if (!this.messages.length && this.llm.systemInstructions)
-			this.messages.push({
+			this.appendMessage({
 				role: "system",
 				content: this.llm.systemInstructions,
 			});
@@ -192,17 +202,19 @@ class AgentSession {
 		if (await this.shouldCompactConversation()) await this.compactMessages();
 
 		// Why this conditional? Because sendMessage itself calls sendMessage after adding all messages to the internal queue
-		if (message) this.messages.push(message);
+		if (message) this.appendMessage(message);
 
 		const responseStream = await this.llm.sdk.responses.stream({
 			model: this.model,
 			tools: Agent.tools.map((tool) => tool.toolProperties) as Tool[],
-			input: this.messages as LLMMessage[],
+			input: this.messagesToSendToLLM as LLMMessage[],
 			store: false,
 			max_output_tokens: this.modelProperties.MAX_OUTPUT_TOKENS,
 			// conversation: this.conversation.id,
 		});
-		this.currentResponseStream = responseStream as { controller: AbortController };
+		this.currentResponseStream = responseStream as {
+			controller: AbortController;
+		};
 
 		let responseText = "";
 		let startedStreaming = false;
@@ -230,7 +242,7 @@ class AgentSession {
 			}
 
 			if (responseText) {
-				this.messages.push({
+				this.appendMessage({
 					role: "assistant",
 					content: responseText,
 				});
@@ -245,7 +257,7 @@ class AgentSession {
 		if (responseText) {
 			this.notifySubscribers({ type: "chunks-end" });
 
-			this.messages.push({
+			this.appendMessage({
 				role: "assistant",
 				content: responseText,
 			});
@@ -287,7 +299,7 @@ class AgentSession {
 					name: toolCall.name,
 				});
 
-				this.messages.push({
+				this.appendMessage({
 					type: "function_call",
 					id: toolCall.id,
 					name: toolCall.name,
@@ -319,7 +331,7 @@ class AgentSession {
 
 				output = JSON.stringify({ type: "failed", reason: outcome.reason });
 
-				this.messages.push({
+				this.appendMessage({
 					type: "function_call_output",
 					output,
 					call_id: toolCallMetadata[i].id,
@@ -341,18 +353,13 @@ class AgentSession {
 
 				output = JSON.stringify({ type: "successful", value: outcome.value });
 
-				this.messages.push({
+				this.appendMessage({
 					type: "function_call_output",
 					output,
 					call_id: toolCallMetadata[i].id,
 					status: "completed",
 				});
 			}
-
-			this.recordedToolCalls.push({
-				...toolCallMetadata[i],
-				output,
-			});
 
 			// At the end of each tool-call output being added to the message list
 			// Check if the new tool call crossed the message to go over limit
@@ -377,6 +384,131 @@ class AgentSession {
 			(error.name === "AbortError" ||
 				error.message.toLowerCase().includes("aborted"))
 		);
+	}
+
+	private appendMessage(message: Message) {
+		this.messages.push(this.cloneMessage(message));
+		this.messagesToSendToLLM.push(this.cloneMessage(message));
+		this.filterOutOldHeavyFunctionOutputsFromLLMContext();
+	}
+
+	private filterOutOldHeavyFunctionOutputsFromLLMContext() {
+		const latestBrowserCallIdByTool = new Map<string, string>();
+
+		for (const message of this.messagesToSendToLLM) {
+			if (
+				this.isFunctionCallMessage(message) &&
+				this.isCompactableBrowserTool(message.name)
+			) {
+				latestBrowserCallIdByTool.set(message.name, message.call_id);
+			}
+		}
+
+		if (!latestBrowserCallIdByTool.size) {
+			return;
+		}
+
+		const compactedMessages = this.messagesToSendToLLM.map((message) => {
+			if (!this.isFunctionCallMessage(message)) {
+				return message;
+			}
+
+			if (!this.isCompactableBrowserTool(message.name)) {
+				return message;
+			}
+
+			if (latestBrowserCallIdByTool.get(message.name) === message.call_id) {
+				// Most recent snapshot or interaction events should not be redacted
+				return message;
+			}
+
+			return {
+				...message,
+				arguments: JSON.stringify({
+					compacted: true,
+					tool: message.name,
+					reason: `Superseded browser ${message.name} tool call removed from active LLM context.`,
+				}),
+			} satisfies Message;
+		});
+
+		for (let i = 0; i < compactedMessages.length; i++) {
+			const message = compactedMessages[i];
+
+			if (!this.isFunctionCallOutputMessage(message)) {
+				continue;
+			}
+
+			const matchingCall = this.findFunctionCallMessageByCallId(
+				compactedMessages,
+				message.call_id,
+			);
+
+			if (
+				!matchingCall ||
+				!this.isCompactableBrowserTool(matchingCall.name) ||
+				latestBrowserCallIdByTool.get(matchingCall.name) ===
+					matchingCall.call_id
+			) {
+				continue;
+			}
+
+			if (!message.output) continue;
+
+			let output: string | Record<string, any> = message.output;
+
+			if (typeof message.output === "string")
+				output = JSON.parse(message.output || "{}") as Record<string, any>;
+
+			compactedMessages[i] = {
+				...message,
+				output: JSON.stringify({
+					type: (output as Record<string, any>).type,
+					value: {
+						compacted: true,
+						tool: matchingCall.name,
+						reason:
+							"Superseded browser tool result removed from active LLM context.",
+					},
+				}),
+			} satisfies Message;
+		}
+
+		this.messagesToSendToLLM = compactedMessages;
+	}
+
+	private isCompactableBrowserTool(name: string) {
+		return ["browser_snapshot", "browser_locate"].includes(name);
+	}
+
+	private isFunctionCallMessage(
+		message: Message,
+	): message is Extract<Message, { type: "function_call" }> {
+		return "type" in message && message.type === "function_call";
+	}
+
+	private isFunctionCallOutputMessage(
+		message: Message,
+	): message is Extract<Message, { type?: "function_call_output" }> {
+		return "call_id" in message && "output" in message;
+	}
+
+	private findFunctionCallMessageByCallId(
+		messages: Message[],
+		callId: string | undefined,
+	) {
+		if (!callId) {
+			return undefined;
+		}
+
+		return messages.find(
+			(message): message is Extract<Message, { type: "function_call" }> =>
+				this.isFunctionCallMessage(message) && message.call_id === callId,
+		);
+	}
+
+	private cloneMessage(message: Message): Message {
+		return { ...message };
 	}
 }
 

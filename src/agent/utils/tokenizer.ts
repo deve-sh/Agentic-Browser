@@ -21,17 +21,17 @@ export function countCurrentTokenUsage(
 	let total = 0;
 
 	for (const msg of messages) {
-		const propertyToTargetCountingOn =
+		const valueToCount =
 			"output" in msg
-				? "output"
+				? msg.output
 				: "content" in msg
-					? "content"
+					? msg.content
 					: "arguments" in msg
-						? "arguments"
-						: "";
+						? msg.arguments
+						: undefined;
 
-		if (propertyToTargetCountingOn) {
-			total += countTokens(encoder, propertyToTargetCountingOn);
+		if (typeof valueToCount === "string" && valueToCount.length > 0) {
+			total += countTokens(encoder, valueToCount);
 		}
 	}
 

@@ -19,7 +19,9 @@ const browserSnapshotTool = {
 				interactiveOnly: {
 					type: "boolean",
 					description:
-						"When true, keeps the snapshot focused on interesting interactive/accessibility nodes. Defaults to true.",
+						"When true, keeps the snapshot focused on interesting interactive/accessibility nodes. Defaults to true." +
+						"Make sure to send this as false when you might need to interact with non-interactive elements such as div elements with onClicks?" +
+						"Use this for when an operation is not making sense with the current set of interactive elements.",
 				},
 				maxElements: {
 					type: "number",
