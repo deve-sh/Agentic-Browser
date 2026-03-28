@@ -1,3 +1,10 @@
+// Big disclaimer:
+// This isn't normal. You would ABSOLUTELY not have this and the API Keys packaged inside a production Electron app
+// and instead have a backend service handle interaction with an AI provider, which would authenticate using a session.
+// This providers and llms list setup is also just for convenience and simplicity of showing how it's done.
+// In production apps, you would probably use a service like Portkey or build a router/gateway for the LLMs and models
+// you plan to support yourself and your app would just select from a list of available models.
+
 import OpenAI from "openai";
 
 if (!process.env.OPENAI_API_KEY) {
