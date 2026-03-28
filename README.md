@@ -43,4 +43,12 @@ npm run dev
 - [x] Implement snapshot filtering logic for message stream (Cloning messages for user view but compacting messages for agent view)
 - [x] Integrate the whole message back and forth flow from the agent with details on when a tool call is executing.
 
-### More that can be done for this 
+### More that can be done
+
+- Obviously all the browser functionality has not been wired, but that's not the point of this project.
+- Chrome Devtools (Console) based debugging for users.
+- History and resumption:
+    - Have a "platform" concept for the agent session to be backed by, right now all messages and their llm counterparts are stored in memory. We can offload this layer to FS or a database to ensure users can continue where they left off.
+    - This also provides a neat way to store browser history for users to continue from (Associate URLs with a Tab ID and whenever it changes, we modify the history entry for the user to pick from in the future, very similar to a logfile).
+    - With the agent messages and compacted LLM history stored per tab on disk/DB we can also resume an agent session from whenever and wherever we want.
+- A way for the user to switch models in the middle depending on the complexity of what they are trying to achieve.
