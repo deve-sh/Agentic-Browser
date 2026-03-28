@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Tab</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f4ef;
+      --panel: rgba(255, 255, 255, 0.72);
+      --border: rgba(28, 30, 24, 0.1);
+      --text: #1f201c;
+      --muted: #66685f;
+      --accent: #dce6f8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      background:
+        radial-gradient(circle at top left, rgba(211, 220, 232, 0.7), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(236, 229, 208, 0.55), transparent 26%),
+        linear-gradient(180deg, #f8f7f2 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: "Segoe UI", "SF Pro Text", system-ui, sans-serif;
+    }
+
+    main {
+      width: min(680px, 100%);
+      padding: 28px 28px 24px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: var(--panel);
+      box-shadow: 0 18px 48px rgba(38, 40, 33, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.05;
+      font-weight: 650;
+    }
+
+    p {
+      margin: 14px 0 0;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    ul {
+      margin: 22px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 12px;
+    }
+
+    li {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(28, 30, 24, 0.08);
+    }
+
+    strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--accent);
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.94em;
+      color: #233044;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">New Tab</p>
+    <h1>Start with the address bar or ask the agent for help.</h1>
+    <p>
+      Type a URL or search phrase into the address bar above, or use the chat sidebar to describe what you want done.
+    </p>
+    <ul>
+      <li>
+        <strong>Open a page</strong>
+        Enter a site like <code>openai.com</code> or a search like <code>best ramen near me</code>.
+      </li>
+      <li>
+        <strong>Work through a task</strong>
+        Ask the agent to navigate, inspect the page, or interact with buttons, forms, and links or just get something done.
+      </li>
+    </ul>
+  </main>
+</body>
+</html>

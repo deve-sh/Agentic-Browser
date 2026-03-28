@@ -1,5 +1,6 @@
 import { BrowserWindow, WebContentsView } from 'electron';
 import { randomUUID } from 'crypto';
+import * as path from 'path';
 import type {
   BrowserActionRequest,
   BrowserActionResult,
@@ -20,6 +21,7 @@ export interface Tab {
   view: WebContentsView;
   title: string;
   url: string;
+  isPlaceholderBlankPage?: boolean;
   favicon?: string;
   cdpTargetId?: string;
   cdpWebSocketUrl?: string;
@@ -53,6 +55,7 @@ type ChatMessage = {
 export class TabManager {
   private tabs: Map<string, Tab> = new Map();
   private activeTabId: string | null = null;
+  private readonly blankPageFilePath = path.join(__dirname, '../../src/renderer/blank.html');
 
   constructor(
     private readonly window: BrowserWindow,
@@ -95,17 +98,27 @@ export class TabManager {
       });
 
     view.webContents.on('page-title-updated', (_e, title) => {
-      tab.title = title;
+      tab.title = tab.isPlaceholderBlankPage ? 'New Tab' : title;
       this.pushTabUpdate(id);
     });
 
     view.webContents.on('did-navigate', (_e, navUrl) => {
-      tab.url = navUrl;
+      if (tab.isPlaceholderBlankPage && this.isBlankPlaceholderUrl(navUrl)) {
+        tab.url = 'about:blank';
+      } else {
+        tab.isPlaceholderBlankPage = false;
+        tab.url = navUrl;
+      }
       this.pushTabUpdate(id);
     });
 
     view.webContents.on('did-navigate-in-page', (_e, navUrl) => {
-      tab.url = navUrl;
+      if (tab.isPlaceholderBlankPage && this.isBlankPlaceholderUrl(navUrl)) {
+        tab.url = 'about:blank';
+      } else {
+        tab.isPlaceholderBlankPage = false;
+        tab.url = navUrl;
+      }
       this.pushTabUpdate(id);
     });
 
@@ -118,7 +131,7 @@ export class TabManager {
       this.hydrateAutomationMetadata(tab);
     });
 
-    view.webContents.loadURL(this.normaliseUrl(url));
+    this.loadTabContents(tab, url);
     this.switchTab(id);
 
     return id;
@@ -167,7 +180,7 @@ export class TabManager {
   navigateActive(url: string): void {
     const tab = this.activeTab();
     if (!tab) return;
-    tab.view.webContents.loadURL(this.normaliseUrl(url));
+    this.loadTabContents(tab, url);
   }
 
   goBack(): void {
@@ -342,11 +355,33 @@ export class TabManager {
   }
 
   private normaliseUrl(url: string): string {
+    if (url === 'about:blank') return url;
     if (/^https?:\/\//i.test(url)) return url;
     if (/^[\w-]+:/i.test(url)) return url;
     if (url.includes(' ') || !url.includes('.')) {
       return `https://www.google.com/search?q=${encodeURIComponent(url)}`;
     }
     return `https://${url}`;
+  }
+
+  private loadTabContents(tab: Tab, rawUrl: string): void {
+    const targetUrl = this.normaliseUrl(rawUrl);
+
+    if (targetUrl === 'about:blank') {
+      tab.isPlaceholderBlankPage = true;
+      tab.url = 'about:blank';
+      tab.title = 'New Tab';
+      tab.favicon = undefined;
+      this.pushTabUpdate(tab.id);
+      void tab.view.webContents.loadFile(this.blankPageFilePath);
+      return;
+    }
+
+    tab.isPlaceholderBlankPage = false;
+    void tab.view.webContents.loadURL(targetUrl);
+  }
+
+  private isBlankPlaceholderUrl(url: string): boolean {
+    return url.startsWith('file://') && url.endsWith('/src/renderer/blank.html');
   }
 }
