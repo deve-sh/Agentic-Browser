@@ -54,7 +54,7 @@ async function chunkReadableFile(contents: string): Promise<string> {
 }
 
 const openaiCapabilities = {
-	supportedReadableFileTypes: ["text/plain"],
+	supportedReadableFileTypes: ["text/plain", "text/markdown"],
 	summarizeChunk,
 	chunkReadableFile,
 	supportedDataFileTypes: ["application/json", "text/csv", "application/xml"],

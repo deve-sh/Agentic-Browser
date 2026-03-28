@@ -1,5 +1,10 @@
 import AgentSession from "../session";
 
+const importEsmModule = new Function(
+	"specifier",
+	"return import(specifier)",
+) as <T>(specifier: string) => Promise<T>;
+
 const getFileMetadataTool = {
 	toolProperties: {
 		type: "function",
@@ -23,9 +28,9 @@ const getFileMetadataTool = {
 		try {
 			const stats = (await import("node:fs")).statSync(args.filePath);
 
-			const fileType = await (
-				await import("file-type")
-			).fileTypeFromFile(args.filePath);
+			const { mimeType } = await import("mime-type/with-db");
+
+			const fileType = await mimeType.lookup(args.filePath);
 
 			if (!fileType) return { error: "File could not be read" };
 
@@ -34,8 +39,7 @@ const getFileMetadataTool = {
 				fileData: {
 					fileSizeInBytes: stats.size,
 					createdAt: stats.birthtime,
-					mimeType: fileType.mime,
-					extension: fileType.ext,
+					mimeType: fileType,
 				},
 			};
 		} catch (error) {

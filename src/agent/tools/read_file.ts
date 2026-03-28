@@ -88,16 +88,31 @@ const readFileTool = {
 							: new Error("File could not be read."),
 				});
 
-			if (
-				!session.llm.capabilities.supportedReadableFileTypes.includes(
-					fileData.mimeType,
+			if (Array.isArray(fileData.mimeType)) {
+				for (const mimeType of fileData.mimeType) {
+					if (
+						!session.llm.capabilities.supportedReadableFileTypes.includes(
+							mimeType,
+						)
+					)
+						return onComplete(cacheKey, {
+							error: new Error(
+								"File type is not supported for this agent at the moment.",
+							),
+						});
+				}
+			} else {
+				if (
+					!session.llm.capabilities.supportedReadableFileTypes.includes(
+						fileData.mimeType,
+					)
 				)
-			)
-				return onComplete(cacheKey, {
-					error: new Error(
-						"File type is not supported for this agent at the moment.",
-					),
-				});
+					return onComplete(cacheKey, {
+						error: new Error(
+							"File type is not supported for this agent at the moment.",
+						),
+					});
+			}
 
 			let contents = "";
 
