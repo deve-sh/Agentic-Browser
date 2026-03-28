@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import * as path from "path";
 
 import { PlaywrightManager } from "./playwrightManager";
@@ -11,6 +11,7 @@ let mainWindow: BrowserWindow | null = null;
 let tabManager: TabManager | null = null;
 let playwrightManager: PlaywrightManager | null = null;
 let agentManager: Agent | null = null;
+let allowImmediateMainWindowClose = false;
 
 async function createWindow() {
 	mainWindow = new BrowserWindow({
@@ -50,6 +51,38 @@ async function createWindow() {
 	mainWindow.on("closed", () => {
 		mainWindow = null;
 		tabManager = null;
+		allowImmediateMainWindowClose = false;
+	});
+
+	mainWindow.on("close", (event) => {
+		if (
+			allowImmediateMainWindowClose ||
+			!mainWindow ||
+			!tabManager?.hasActiveAgentProcessing()
+		) {
+			return;
+		}
+
+		event.preventDefault();
+
+		const userChoice = dialog.showMessageBoxSync(mainWindow, {
+			type: "warning",
+			buttons: ["Keep App Open", "Quit Anyway"],
+			defaultId: 0,
+			cancelId: 0,
+			title: "Agent still processing",
+			message: "A tab is still being processed by the agent.",
+			detail:
+				"Closing the app now will interrupt the current task. Still close the app?",
+			noLink: true,
+		});
+
+		if (userChoice !== 1) {
+			return;
+		}
+
+		allowImmediateMainWindowClose = true;
+		mainWindow.close();
 	});
 
 	tabManager.newTab("about:blank");

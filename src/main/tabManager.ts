@@ -281,6 +281,10 @@ export class TabManager {
     return this.tabs.get(tabId)?.agentSession?.isProcessing ?? false;
   }
 
+  hasActiveAgentProcessing(): boolean {
+    return [...this.tabs.values()].some((tab) => tab.agentSession?.isProcessing);
+  }
+
   getAgentMessages(tabId: string): ChatMessage[] {
     const tab = this.tabs.get(tabId);
     if (!tab?.agentSession) {
