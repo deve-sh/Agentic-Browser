@@ -1,6 +1,11 @@
 import AgentSession from "../session";
 import type { BrowserActionRequest } from "../types";
 
+function normalizeOptionalString(value?: string) {
+	const trimmedValue = value?.trim();
+	return trimmedValue ? trimmedValue : undefined;
+}
+
 const browserInteractTool = {
 	toolProperties: {
 		type: "function",
@@ -103,7 +108,22 @@ const browserInteractTool = {
 
 	execute: async (args: BrowserActionRequest, session: AgentSession) => {
 		return session.browser.handleAction({
-			...args,
+			action: args.action,
+			ref: normalizeOptionalString(args.ref),
+			selector: normalizeOptionalString(args.selector),
+			text: normalizeOptionalString(args.text),
+			label: normalizeOptionalString(args.label),
+			placeholder: normalizeOptionalString(args.placeholder),
+			role: normalizeOptionalString(args.role),
+			name: normalizeOptionalString(args.name),
+			title: normalizeOptionalString(args.title),
+			altText: normalizeOptionalString(args.altText),
+			testId: normalizeOptionalString(args.testId),
+			exact: args.exact,
+			value: normalizeOptionalString(args.value),
+			key: normalizeOptionalString(args.key),
+			count: args.count,
+			filePaths: args.filePaths?.filter(Boolean),
 		});
 	},
 };

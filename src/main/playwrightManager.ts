@@ -158,9 +158,14 @@ export class PlaywrightManager {
   async handleAction(targetId: string, action: BrowserActionRequest): Promise<BrowserActionResult> {
     const page = await this.getRequiredPageForTarget(targetId);
     const target = await this.resolveActionTarget(targetId, page, action);
+    const actionType = action.action;
+
+    if (!actionType) {
+      throw new Error('Browser action requests must include an action.');
+    }
 
     try {
-      switch (action.type) {
+      switch (actionType) {
         case 'click':
           await this.clickTarget(target);
           break;
@@ -204,7 +209,7 @@ export class PlaywrightManager {
           await this.fillTarget(target, '');
           break;
         default:
-          throw new Error(`Unsupported action type: ${(action as { type: string }).type}`);
+          throw new Error(`Unsupported action type: ${actionType}`);
       }
     } finally {
       if (target.kind === 'handle' && target.isEphemeral) {

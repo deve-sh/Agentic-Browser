@@ -78,7 +78,7 @@ export interface BrowserLocatorInput {
 }
 
 export interface BrowserActionRequest extends BrowserLocatorInput {
-	type:
+	action?:
 		| "click"
 		| "double_click"
 		| "hover"
