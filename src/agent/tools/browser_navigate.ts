@@ -20,7 +20,7 @@ const browserNavigateTool = {
 	},
 
 	execute: async (args: { url: string }, session: AgentSession) => {
-		return session.requireBrowser().navigate(args.url);
+		return session.browser.navigate(args.url);
 	},
 };
 

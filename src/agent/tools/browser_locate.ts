@@ -1,5 +1,5 @@
 import AgentSession from "../session";
-import type { BrowserWaitRequest } from "../browser";
+import type { BrowserWaitRequest } from "../types";
 
 const browserLocateTool = {
 	toolProperties: {
@@ -90,10 +90,10 @@ const browserLocateTool = {
 		session: AgentSession,
 	) => {
 		if (args.mode === "wait") {
-			return session.requireBrowser().waitForElement(args);
+			return session.browser.waitForElement(args);
 		}
 
-		return session.requireBrowser().findElements(args);
+		return session.browser.findElements(args);
 	},
 };
 

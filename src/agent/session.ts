@@ -35,7 +35,7 @@ class AgentSession {
 	// conversation: Partial<Conversation>;
 
 	subscribers: Set<SessionSubscriber> = new Set();
-	private browser: BrowserSessionBridge | null = null;
+	private _browser: BrowserSessionBridge | null = null;
 
 	private async setModel(model: LLMModel) {
 		// Can be changed per message per call too
@@ -88,16 +88,16 @@ class AgentSession {
 		return () => this.subscribers.delete(subscriber);
 	}
 
-	attachBrowser(browser: BrowserSessionBridge) {
-		this.browser = browser;
+	set browser(browser: BrowserSessionBridge) {
+		this._browser = browser;
 	}
 
-	requireBrowser() {
-		if (!this.browser) {
+	get browser() {
+		if (!this._browser) {
 			throw new Error("This session is not attached to a browser tab.");
 		}
 
-		return this.browser;
+		return this._browser;
 	}
 
 	async estimateCurrentTokenUsage() {

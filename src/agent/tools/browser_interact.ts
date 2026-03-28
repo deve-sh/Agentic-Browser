@@ -1,5 +1,5 @@
 import AgentSession from "../session";
-import type { BrowserActionRequest } from "../browser";
+import type { BrowserActionRequest } from "../types";
 
 const browserInteractTool = {
 	toolProperties: {
@@ -102,7 +102,7 @@ const browserInteractTool = {
 	},
 
 	execute: async (args: BrowserActionRequest, session: AgentSession) => {
-		return session.requireBrowser().handleAction({
+		return session.browser.handleAction({
 			...args,
 		});
 	},

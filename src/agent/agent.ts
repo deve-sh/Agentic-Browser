@@ -38,7 +38,7 @@ export class Agent {
 
 		await agentSession.initialize(options);
 
-		if (options?.browser) agentSession.attachBrowser(options.browser);
+		if (options?.browser) agentSession.browser = options.browser;
 
 		this.sessions.set(agentSession.id, agentSession);
 

@@ -1,5 +1,5 @@
 import AgentSession from "../session";
-import type { BrowserSnapshotFormat } from "../browser";
+import type { BrowserSnapshotFormat } from "../types";
 
 const browserSnapshotTool = {
 	toolProperties: {
@@ -38,7 +38,7 @@ const browserSnapshotTool = {
 		},
 		session: AgentSession,
 	) => {
-		return session.requireBrowser().snapshot({
+		return session.browser.snapshot({
 			format: args.format,
 			interactiveOnly: args.interactiveOnly,
 			maxElements: args.maxElements,
