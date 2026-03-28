@@ -76,6 +76,16 @@ const chatInput = document.getElementById('chat-input') as HTMLTextAreaElement;
 const chatCancel = document.getElementById('chat-cancel') as HTMLButtonElement;
 const chatSend = document.getElementById('chat-send') as HTMLButtonElement;
 
+function isOpenableChatLink(rawHref: string): boolean {
+  const normalizedHref = rawHref.trim();
+
+  if (!normalizedHref) {
+    return false;
+  }
+
+  return !/^(javascript|data|vbscript):/i.test(normalizedHref);
+}
+
 function renderMarkdown(content: string): string {
   const renderedHtml = marked.parse(content, {
     breaks: true,
@@ -323,6 +333,27 @@ chatCancel.addEventListener('click', async () => {
   } finally {
     renderChat();
   }
+});
+
+chatMessagesEl.addEventListener('click', (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  const link = target.closest('a[href]') as HTMLAnchorElement | null;
+  if (!link) {
+    return;
+  }
+
+  const rawHref = link.getAttribute('href')?.trim() ?? '';
+  if (!isOpenableChatLink(rawHref)) {
+    event.preventDefault();
+    return;
+  }
+
+  event.preventDefault();
+  void browserAPI.newTab(rawHref);
 });
 
 chatInput.addEventListener('keydown', (event) => {

@@ -13,6 +13,16 @@ let playwrightManager: PlaywrightManager | null = null;
 let agentManager: Agent | null = null;
 let allowImmediateMainWindowClose = false;
 
+function isOpenableAppTabUrl(url: string): boolean {
+	const normalizedUrl = url.trim();
+
+	if (!normalizedUrl) {
+		return false;
+	}
+
+	return !/^(javascript|data|vbscript):/i.test(normalizedUrl);
+}
+
 async function createWindow() {
 	mainWindow = new BrowserWindow({
 		width: 1280,
@@ -27,6 +37,31 @@ async function createWindow() {
 			contextIsolation: true,
 			nodeIntegration: false,
 		},
+	});
+
+	mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+		if (tabManager && isOpenableAppTabUrl(url)) {
+			tabManager.newTab(url);
+		}
+
+		return { action: "deny" };
+	});
+
+	mainWindow.webContents.on("will-navigate", (event, url) => {
+		if (!mainWindow) {
+			return;
+		}
+
+		const currentUrl = mainWindow.webContents.getURL();
+		if (url === currentUrl) {
+			return;
+		}
+
+		event.preventDefault();
+
+		if (tabManager && isOpenableAppTabUrl(url)) {
+			tabManager.newTab(url);
+		}
 	});
 
 	await mainWindow.loadFile(
