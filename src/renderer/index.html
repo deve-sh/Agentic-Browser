@@ -35,6 +35,28 @@
     </div>
   </div>
 
+  <div id="workspace">
+    <aside id="chat-shell" aria-label="Agent chat">
+      <div id="chat-shell-header">
+        <div>
+          <p id="chat-eyebrow">Agent Session</p>
+          <h1 id="chat-title">No active tab</h1>
+        </div>
+      </div>
+      <div id="chat-messages" aria-live="polite"></div>
+      <form id="chat-form">
+        <label id="chat-input-label" for="chat-input">Ask the agent</label>
+        <textarea
+          id="chat-input"
+          rows="4"
+          placeholder="Ask the agent to inspect, navigate, and work through this page..."
+        ></textarea>
+        <button id="chat-send" type="submit">Send</button>
+      </form>
+    </aside>
+    <section id="browser-stage" aria-hidden="true"></section>
+  </div>
+
   <script src="../../dist/renderer/index.js"></script>
 </body>
 </html>

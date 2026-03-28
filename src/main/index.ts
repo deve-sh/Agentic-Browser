@@ -4,7 +4,7 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import * as path from "path";
 
 import { PlaywrightManager } from "./playwrightManager";
-import { TabManager } from "./tabManager";
+import { CHAT_SIDEBAR_MIN_WIDTH, MIN_WEBVIEW_WIDTH, TabManager } from "./tabManager";
 import { Agent } from "../agent/agent";
 
 let mainWindow: BrowserWindow | null = null;
@@ -16,7 +16,7 @@ async function createWindow() {
 	mainWindow = new BrowserWindow({
 		width: 1280,
 		height: 800,
-		minWidth: 800,
+		minWidth: CHAT_SIDEBAR_MIN_WIDTH + MIN_WEBVIEW_WIDTH,
 		minHeight: 600,
 		frame: false,
 		titleBarStyle: "hidden",
@@ -87,6 +87,14 @@ ipcMain.handle("tab:reload", () => {
 
 ipcMain.handle("tab:list", () => {
 	return tabManager?.getTabList() ?? [];
+});
+
+ipcMain.handle("agent:send-message", (_event, tabId: string, message: string) => {
+	return tabManager?.sendAgentMessage(tabId, message);
+});
+
+ipcMain.handle("agent:get-messages", (_event, tabId: string) => {
+	return tabManager?.getAgentMessages(tabId) ?? [];
 });
 
 ipcMain.handle("window:minimize", () => {

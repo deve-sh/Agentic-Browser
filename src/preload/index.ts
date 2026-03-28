@@ -8,6 +8,16 @@ interface TabInfo {
   isActive: boolean;
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface AgentStreamEvent {
+  type: 'chunks-start' | 'chunks-end' | 'chunk';
+  content?: string;
+}
+
 contextBridge.exposeInMainWorld('browserAPI', {
   // Tab actions
   newTab: (url?: string) => ipcRenderer.invoke('tab:new', url),
@@ -22,6 +32,9 @@ contextBridge.exposeInMainWorld('browserAPI', {
   toggleMaximizeWindow: () => ipcRenderer.invoke('window:maximize-toggle'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   isWindowMaximized: () => ipcRenderer.invoke('window:is-maximized'),
+  sendAgentMessage: (tabId: string, message: string) =>
+    ipcRenderer.invoke('agent:send-message', tabId, message),
+  getAgentMessages: (tabId: string) => ipcRenderer.invoke('agent:get-messages', tabId),
 
   // Events from main → renderer
   onTabUpdated: (cb: (tab: TabInfo) => void) => {
@@ -29,5 +42,11 @@ contextBridge.exposeInMainWorld('browserAPI', {
   },
   onTabListUpdated: (cb: (tabs: TabInfo[]) => void) => {
     ipcRenderer.on('tab:list-updated', (_e, tabs) => cb(tabs));
+  },
+  onAgentMessagesUpdated: (cb: (payload: { tabId: string; messages: ChatMessage[] }) => void) => {
+    ipcRenderer.on('agent:messages-updated', (_e, payload) => cb(payload));
+  },
+  onAgentStream: (cb: (payload: { tabId: string; chunk: AgentStreamEvent }) => void) => {
+    ipcRenderer.on('agent:stream', (_e, payload) => cb(payload));
   },
 });

@@ -24,6 +24,7 @@ export interface Tab {
   cdpTargetId?: string;
   cdpWebSocketUrl?: string;
   agentSession?: AgentSession;
+  unsubscribeAgentSession?: () => void;
 }
 
 export interface TabInfo {
@@ -34,7 +35,20 @@ export interface TabInfo {
   isActive: boolean;
 }
 
-const CHROME_HEIGHT = 84; // px reserved for the draggable header and nav bar
+export const CHAT_SIDEBAR_MIN_WIDTH = 300;
+export const CHAT_SIDEBAR_RATIO = 0.3;
+export const MIN_WEBVIEW_WIDTH = 500;
+export const CHROME_HEIGHT = 84; // px reserved for the draggable header and nav bar
+
+type AgentStreamEvent =
+  | { type: 'chunks-start' }
+  | { type: 'chunk'; content: string }
+  | { type: 'chunks-end' };
+
+type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 export class TabManager {
   private tabs: Map<string, Tab> = new Map();
@@ -68,6 +82,13 @@ export class TabManager {
       )
       .then((initializedSession) => {
         tab.agentSession = initializedSession;
+        tab.unsubscribeAgentSession = initializedSession.subscribe((_sessionId, chunk) => {
+          this.window.webContents.send('agent:stream', {
+            tabId: id,
+            chunk,
+          } satisfies { tabId: string; chunk: AgentStreamEvent });
+        });
+        this.pushAgentMessages(id);
       })
       .catch((error) => {
         console.warn(`Failed to initialize agent session for tab ${id}.`, error);
@@ -113,6 +134,7 @@ export class TabManager {
     }
 
     tab.view.webContents.close();
+    tab.unsubscribeAgentSession?.();
     this.tabs.delete(tabId);
 
     const remaining = [...this.tabs.keys()];
@@ -201,6 +223,48 @@ export class TabManager {
     }));
   }
 
+  async sendAgentMessage(tabId: string, message: string): Promise<void> {
+    const tab = this.tabs.get(tabId);
+    if (!tab?.agentSession) {
+      throw new Error(`Tab ${tabId} does not have an initialized agent session yet.`);
+    }
+
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) {
+      return;
+    }
+
+    const sendPromise = tab.agentSession.sendMessage({
+      role: 'user',
+      content: trimmedMessage,
+    });
+    this.pushAgentMessages(tabId);
+
+    await sendPromise;
+    this.pushAgentMessages(tabId);
+  }
+
+  getAgentMessages(tabId: string): ChatMessage[] {
+    const tab = this.tabs.get(tabId);
+    if (!tab?.agentSession) {
+      return [];
+    }
+
+    return tab.agentSession.messages
+      .filter(
+        (message): message is { role: 'user' | 'assistant' | 'system'; content?: string } =>
+          'role' in message && Boolean(message.content),
+      )
+      .filter(
+        (message): message is { role: 'user' | 'assistant'; content?: string } =>
+          message.role === 'user' || message.role === 'assistant',
+      )
+      .map((message) => ({
+        role: message.role,
+        content: message.content ?? '',
+      }));
+  }
+
   private activeTab(): Tab | undefined {
     return this.activeTabId ? this.tabs.get(this.activeTabId) : undefined;
   }
@@ -219,10 +283,14 @@ export class TabManager {
     if (!tab) return;
 
     const [width, height] = this.window.getContentSize();
+    const sidebarWidth = Math.max(
+      CHAT_SIDEBAR_MIN_WIDTH,
+      Math.floor(width * CHAT_SIDEBAR_RATIO),
+    );
     tab.view.setBounds({
-      x: 0,
+      x: sidebarWidth,
       y: CHROME_HEIGHT,
-      width,
+      width: Math.max(0, width - sidebarWidth),
       height: height - CHROME_HEIGHT,
     });
   }
@@ -242,6 +310,13 @@ export class TabManager {
 
   private pushTabListUpdate(): void {
     this.window.webContents.send('tab:list-updated', this.getTabList());
+  }
+
+  private pushAgentMessages(tabId: string): void {
+    this.window.webContents.send('agent:messages-updated', {
+      tabId,
+      messages: this.getAgentMessages(tabId),
+    } satisfies { tabId: string; messages: ChatMessage[] });
   }
 
   private hydrateAutomationMetadata(tab: Tab): void {
