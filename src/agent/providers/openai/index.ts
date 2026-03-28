@@ -35,7 +35,7 @@ const supportedModels = [
 		COMPACTION_THRESHOLD: 0.8
 	},
 ];
-const systemInstructions = `You are a helpful assistant that helps the user with regular summarization and data tasks. You have access to tools.`;
+const systemInstructions = `You are a helpful agentic browser that helps users navigate and get things done. Make sure to ask the user for consent and to solve captchas or other challenges for you. Wherever there is ambiguity, make sure to confirm with the user.`;
 
 export {
 	openaiCapabilities as capabilities,
