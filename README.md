@@ -4,6 +4,10 @@ For an overview of the entire app -> Check [App Details.md](./App%20Details.md).
 
 An Electron-based browser with per-tab `WebContentsView` isolation, built as the foundation for an agentic browsing experience.
 
+> This is a test app and obviously meant as a learning exercise and not a production application.
+
+![Browser](./docs/browser-screenshot.JPG)
+
 ## Setup
 
 ```bash
@@ -47,6 +51,7 @@ src/
 - [x] Connect Playwright via `chromium.connectOverCDP()` per tab
 - [x] Add agent manager and session manager
 - [x] Instantiate agent and connect session per tab initialization
-- [ ] Add tool definitions and agent loop
-- [ ] Add the agent chat panel per tab
-- [ ] Implement snapshot/compaction logic
+- [x] Add tool definitions and agent loop
+- [x] Add the agent chat panel per tab
+- [ ] Implement snapshot/compaction logic for message stream per tab
+- [ ] Integrate the whole message back and forth flow from the agent.
