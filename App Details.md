@@ -52,8 +52,8 @@ The preload also exposes global listener functions for the renderer to mount and
   1. User sends a message.
   2. It checks if there are any messages already, if not, it prepends system instructions to the LLM messages list.
   3. It adds the message to the list, if the message is too big for the currently occupied context window, it invokes the provider's API to summarize the message and substitutes it.
-  4. TODO: It also checks for snapshots or other redundant data such as click/navigation metadata received from previous tool calls which are no longer relevant and compacts them.
-  5. TODO: It does all the above while maintaining a copy of the messages in memory to display to the user.
+  4. It also checks for snapshots or other redundant data such as click/navigation metadata received from previous tool calls which are no longer relevant and compacts them.
+  5. It does all the above while maintaining a copy of the messages in memory to display to the user.
   6. It then checks if the entire messages list is too big to fit into a single context window and runs compaction for the previous messages if not.
   7. Once all this is done. It sends the messages list and the available tools to the LLM and waits for a response (Streamed), it checks if there are any `function_calls` necessary for the current iteration of the loop. If yes, it executes the function calls with the arguments.
   8. Each tool / function call is parallelly invoked for this iteration and their outcomes are compiled and added back to the messages list for the agent to process.

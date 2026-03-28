@@ -48,14 +48,30 @@ type AgentStreamEvent =
   | { type: 'chunks-end' };
 
 type ChatMessage = {
+  type: 'message';
   role: 'user' | 'assistant';
   content: string;
+};
+
+type ToolCallMetadataEntry = {
+  label: string;
+  value: string;
+};
+
+type ToolCallItem = {
+  type: 'tool_call';
+  id: string;
+  name: string;
+  status: 'running' | 'completed' | 'failed';
+  metadata: ToolCallMetadataEntry[];
 };
 
 type AgentProcessingState = {
   tabId: string;
   isProcessing: boolean;
 };
+
+type ChatTimelineItem = ChatMessage | ToolCallItem;
 
 export class TabManager {
   private tabs: Map<string, Tab> = new Map();
@@ -285,25 +301,68 @@ export class TabManager {
     return [...this.tabs.values()].some((tab) => tab.agentSession?.isProcessing);
   }
 
-  getAgentMessages(tabId: string): ChatMessage[] {
+  getAgentMessages(tabId: string): ChatTimelineItem[] {
     const tab = this.tabs.get(tabId);
     if (!tab?.agentSession) {
       return [];
     }
 
-    return tab.agentSession.messages
-      .filter(
-        (message): message is { role: 'user' | 'assistant' | 'system'; content?: string } =>
-          'role' in message && Boolean(message.content),
-      )
-      .filter(
-        (message): message is { role: 'user' | 'assistant'; content?: string } =>
-          message.role === 'user' || message.role === 'assistant',
-      )
-      .map((message) => ({
-        role: message.role,
-        content: message.content ?? '',
-      }));
+    const timeline: ChatTimelineItem[] = [];
+    const toolItemsByCallId = new Map<string, ToolCallItem>();
+
+    for (const message of tab.agentSession.messages) {
+      if ('role' in message && (message.role === 'user' || message.role === 'assistant')) {
+        timeline.push({
+          type: 'message',
+          role: message.role,
+          content: message.content ?? '',
+        });
+        continue;
+      }
+
+      if ('type' in message && message.type === 'function_call') {
+        if (!message.call_id) {
+          continue;
+        }
+
+        const toolItem: ToolCallItem = {
+          type: 'tool_call',
+          id: message.call_id,
+          name: message.name,
+          status: 'running',
+          metadata: this.summarizeToolCallArguments(message.name, message.arguments),
+        };
+
+        toolItemsByCallId.set(message.call_id, toolItem);
+        timeline.push(toolItem);
+        continue;
+      }
+
+      if ('output' in message && 'call_id' in message) {
+        if (!message.call_id) {
+          continue;
+        }
+
+        const toolItem = toolItemsByCallId.get(message.call_id) ?? {
+          type: 'tool_call' as const,
+          id: message.call_id,
+          name: 'tool_call',
+          status: 'running' as const,
+          metadata: [],
+        };
+
+        const outputSummary = this.summarizeToolCallOutput(message.output);
+        toolItem.status = outputSummary.status;
+        toolItem.metadata = this.mergeMetadata(toolItem.metadata, outputSummary.metadata);
+
+        if (!toolItemsByCallId.has(message.call_id)) {
+          toolItemsByCallId.set(message.call_id, toolItem);
+          timeline.push(toolItem);
+        }
+      }
+    }
+
+    return timeline;
   }
 
   private activeTab(): Tab | undefined {
@@ -357,7 +416,7 @@ export class TabManager {
     this.window.webContents.send('agent:messages-updated', {
       tabId,
       messages: this.getAgentMessages(tabId),
-    } satisfies { tabId: string; messages: ChatMessage[] });
+    } satisfies { tabId: string; messages: ChatTimelineItem[] });
   }
 
   private pushAgentProcessingState(tabId: string, isProcessing: boolean): void {
@@ -418,5 +477,138 @@ export class TabManager {
 
   private isBlankPlaceholderUrl(url: string): boolean {
     return url.startsWith('file://') && url.endsWith('/src/renderer/blank.html');
+  }
+
+  private summarizeToolCallArguments(name: string, rawArguments: string): ToolCallMetadataEntry[] {
+    const args = this.parseRecord(rawArguments);
+    const metadata: ToolCallMetadataEntry[] = [{ label: 'Tool', value: name }];
+
+    this.pushMetadataIfPresent(metadata, 'Action', args.action);
+    this.pushMetadataIfPresent(metadata, 'URL', args.url);
+    this.pushMetadataIfPresent(metadata, 'Ref', args.ref);
+    this.pushMetadataIfPresent(metadata, 'Selector', args.selector);
+    this.pushMetadataIfPresent(metadata, 'Text', args.text);
+    this.pushMetadataIfPresent(metadata, 'Label', args.label);
+    this.pushMetadataIfPresent(metadata, 'Placeholder', args.placeholder);
+    this.pushMetadataIfPresent(metadata, 'Role', args.role);
+    this.pushMetadataIfPresent(metadata, 'Name', args.name);
+    this.pushMetadataIfPresent(metadata, 'State', args.state);
+    this.pushMetadataIfPresent(metadata, 'Format', args.format);
+    this.pushMetadataIfPresent(metadata, 'Key', args.key);
+    this.pushMetadataIfPresent(metadata, 'Value', args.value);
+
+    if (typeof args.count === 'number' && args.count > 1) {
+      metadata.push({ label: 'Count', value: String(args.count) });
+    }
+
+    if (typeof args.timeoutMs === 'number') {
+      metadata.push({ label: 'Timeout', value: `${args.timeoutMs}ms` });
+    }
+
+    if (Array.isArray(args.filePaths) && args.filePaths.length > 0) {
+      metadata.push({
+        label: 'Files',
+        value: args.filePaths.slice(0, 2).map((filePath) => path.basename(String(filePath))).join(', ')
+          + (args.filePaths.length > 2 ? ` +${args.filePaths.length - 2}` : ''),
+      });
+    }
+
+    return metadata.slice(0, 5);
+  }
+
+  private summarizeToolCallOutput(rawOutput?: unknown): {
+    status: 'completed' | 'failed';
+    metadata: ToolCallMetadataEntry[];
+  } {
+    const output = this.parseRecord(rawOutput);
+    const status = output.type === 'failed' ? 'failed' : 'completed';
+    const metadata: ToolCallMetadataEntry[] = [{ label: 'Status', value: status }];
+    const value =
+      output.value && typeof output.value === 'object' ? (output.value as Record<string, unknown>) : {};
+
+    this.pushMetadataIfPresent(metadata, 'Page', value.title);
+    this.pushMetadataIfPresent(metadata, 'URL', value.url);
+
+    if (typeof value.count === 'number') {
+      metadata.push({ label: 'Count', value: String(value.count) });
+    }
+
+    if (typeof value.state === 'string') {
+      metadata.push({ label: 'State', value: value.state });
+    }
+
+    if (typeof value.success === 'boolean') {
+      metadata.push({ label: 'Success', value: value.success ? 'Yes' : 'No' });
+    }
+
+    if (typeof value.refsInvalidated === 'boolean') {
+      metadata.push({
+        label: 'Refs',
+        value: value.refsInvalidated ? 'Invalidated' : 'Preserved',
+      });
+    }
+
+    if (status === 'failed') {
+      this.pushMetadataIfPresent(metadata, 'Reason', output.reason);
+    }
+
+    return {
+      status,
+      metadata: metadata.slice(0, 5),
+    };
+  }
+
+  private mergeMetadata(
+    existingMetadata: ToolCallMetadataEntry[],
+    nextMetadata: ToolCallMetadataEntry[],
+  ): ToolCallMetadataEntry[] {
+    const merged = new Map<string, string>();
+
+    for (const item of [...existingMetadata, ...nextMetadata]) {
+      merged.set(item.label, item.value);
+    }
+
+    return [...merged.entries()].map(([label, value]) => ({ label, value }));
+  }
+
+  private pushMetadataIfPresent(
+    metadata: ToolCallMetadataEntry[],
+    label: string,
+    value: unknown,
+  ) {
+    if (typeof value !== 'string') {
+      return;
+    }
+
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      return;
+    }
+
+    metadata.push({
+      label,
+      value: trimmedValue.length > 60 ? `${trimmedValue.slice(0, 57)}...` : trimmedValue,
+    });
+  }
+
+  private parseRecord(rawValue?: unknown): Record<string, unknown> {
+    if (!rawValue) {
+      return {};
+    }
+
+    if (typeof rawValue === 'object') {
+      return rawValue as Record<string, unknown>;
+    }
+
+    if (typeof rawValue !== 'string') {
+      return {};
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue) as unknown;
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
   }
 }

@@ -8,10 +8,26 @@ interface TabInfo {
   isActive: boolean;
 }
 
-interface ChatMessage {
+type ChatMessage = {
+  type: 'message';
   role: 'user' | 'assistant';
   content: string;
-}
+};
+
+type ToolCallMetadataEntry = {
+  label: string;
+  value: string;
+};
+
+type ToolCallItem = {
+  type: 'tool_call';
+  id: string;
+  name: string;
+  status: 'running' | 'completed' | 'failed';
+  metadata: ToolCallMetadataEntry[];
+};
+
+type ChatTimelineItem = ChatMessage | ToolCallItem;
 
 interface AgentStreamEvent {
   type: 'chunks-start' | 'chunks-end' | 'chunk';
@@ -50,7 +66,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
   onTabListUpdated: (cb: (tabs: TabInfo[]) => void) => {
     ipcRenderer.on('tab:list-updated', (_e, tabs) => cb(tabs));
   },
-  onAgentMessagesUpdated: (cb: (payload: { tabId: string; messages: ChatMessage[] }) => void) => {
+  onAgentMessagesUpdated: (cb: (payload: { tabId: string; messages: ChatTimelineItem[] }) => void) => {
     ipcRenderer.on('agent:messages-updated', (_e, payload) => cb(payload));
   },
   onAgentStream: (cb: (payload: { tabId: string; chunk: AgentStreamEvent }) => void) => {

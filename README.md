@@ -7,6 +7,7 @@ An Electron-based browser with per-tab `WebContentsView` isolation, built as the
 > This is a test app and obviously meant as a learning exercise and not a production application.
 
 ![Browser](./docs/browser-screenshot.JPG)
+![Browser navigation and interaction flow](./docs/Navigation%20and%20Interaction%20flow.png)
 
 ## Setup
 
@@ -39,7 +40,7 @@ npm run dev
 - [x] Add the agent chat panel per tab
 - [x] Markdown rendering on the frontend for messages.
 - [x] While the message and content processing happens, we have to block the textarea on the user's end from sending any more messages (Or add a "steer" operation similar to Codex which allows the user to send a message right after the next tool call).
-- [ ] Implement snapshot/compaction logic for message stream per tab (Cloning messages for user view but compacting messages for agent view)
-- [ ] Integrate the whole message back and forth flow from the agent with details on when a tool call is executing.
+- [x] Implement snapshot filtering logic for message stream (Cloning messages for user view but compacting messages for agent view)
+- [x] Integrate the whole message back and forth flow from the agent with details on when a tool call is executing.
 
 ### More that can be done for this 

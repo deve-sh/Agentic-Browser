@@ -6,10 +6,26 @@ interface TabInfo {
   isActive: boolean;
 }
 
-interface ChatMessage {
+type ChatMessage = {
+  type: 'message';
   role: 'user' | 'assistant';
   content: string;
-}
+};
+
+type ToolCallMetadataEntry = {
+  label: string;
+  value: string;
+};
+
+type ToolCallItem = {
+  type: 'tool_call';
+  id: string;
+  name: string;
+  status: 'running' | 'completed' | 'failed';
+  metadata: ToolCallMetadataEntry[];
+};
+
+type ChatTimelineItem = ChatMessage | ToolCallItem;
 
 interface AgentStreamEvent {
   type: 'chunks-start' | 'chunks-end' | 'chunk';
@@ -44,18 +60,18 @@ declare const browserAPI: {
   isWindowMaximized: () => Promise<boolean>;
   sendAgentMessage: (tabId: string, message: string) => Promise<void>;
   cancelAgentMessage: (tabId: string) => Promise<boolean>;
-  getAgentMessages: (tabId: string) => Promise<ChatMessage[]>;
+  getAgentMessages: (tabId: string) => Promise<ChatTimelineItem[]>;
   isAgentProcessing: (tabId: string) => Promise<boolean>;
   onTabUpdated: (cb: (tab: TabInfo) => void) => void;
   onTabListUpdated: (cb: (tabs: TabInfo[]) => void) => void;
-  onAgentMessagesUpdated: (cb: (payload: { tabId: string; messages: ChatMessage[] }) => void) => void;
+  onAgentMessagesUpdated: (cb: (payload: { tabId: string; messages: ChatTimelineItem[] }) => void) => void;
   onAgentStream: (cb: (payload: { tabId: string; chunk: AgentStreamEvent }) => void) => void;
   onAgentProcessingState: (cb: (payload: AgentProcessingState) => void) => void;
 };
 
 let tabs: TabInfo[] = [];
-const chatMessagesByTab = new Map<string, ChatMessage[]>();
-const optimisticMessagesByTab = new Map<string, ChatMessage[]>();
+const chatMessagesByTab = new Map<string, ChatTimelineItem[]>();
+const optimisticMessagesByTab = new Map<string, ChatTimelineItem[]>();
 const streamingAssistantByTab = new Map<string, string>();
 const pendingTabs = new Set<string>();
 const cancelRequestedTabs = new Set<string>();
@@ -179,7 +195,11 @@ function renderChat() {
     );
   } else {
     for (const message of messages) {
-      chatMessagesEl.appendChild(buildChatBubble(message.role, message.content));
+      if (message.type === 'message') {
+        chatMessagesEl.appendChild(buildChatBubble(message.role, message.content));
+      } else {
+        chatMessagesEl.appendChild(buildToolCallCard(message));
+      }
     }
 
     if (streamingMessage) {
@@ -187,6 +207,10 @@ function renderChat() {
         buildChatBubble('assistant', streamingMessage, true),
       );
     }
+  }
+
+  if (isPending && !streamingMessage) {
+    chatMessagesEl.appendChild(buildProcessingIndicator(isCancelling));
   }
 
   chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
@@ -208,6 +232,71 @@ function buildChatBubble(
   bubble.className = `chat-message ${role}${isStreaming ? ' streaming' : ''}`;
   bubble.innerHTML = renderMarkdown(content);
   return bubble;
+}
+
+function buildToolCallCard(toolCall: ToolCallItem): HTMLDivElement {
+  const card = document.createElement('div');
+  card.className = `chat-tool-call ${toolCall.status}`;
+
+  const header = document.createElement('div');
+  header.className = 'chat-tool-call-header';
+
+  const name = document.createElement('span');
+  name.className = 'chat-tool-call-name';
+  name.textContent = toolCall.name;
+
+  const status = document.createElement('span');
+  status.className = `chat-tool-call-status ${toolCall.status}`;
+  status.textContent = toolCall.status === 'running'
+    ? 'Running'
+    : toolCall.status === 'failed'
+      ? 'Failed'
+      : 'Completed';
+
+  header.append(name, status);
+  card.appendChild(header);
+
+  if (toolCall.metadata.length > 0) {
+    const metadata = document.createElement('div');
+    metadata.className = 'chat-tool-call-metadata';
+
+    for (const item of toolCall.metadata) {
+      const row = document.createElement('div');
+      row.className = 'chat-tool-call-row';
+
+      const label = document.createElement('span');
+      label.className = 'chat-tool-call-label';
+      label.textContent = item.label;
+
+      const value = document.createElement('span');
+      value.className = 'chat-tool-call-value';
+      value.textContent = item.value;
+
+      row.append(label, value);
+      metadata.appendChild(row);
+    }
+
+    card.appendChild(metadata);
+  }
+
+  return card;
+}
+
+function buildProcessingIndicator(isCancelling: boolean): HTMLDivElement {
+  const indicator = document.createElement('div');
+  indicator.className = 'chat-processing-indicator';
+
+  const label = document.createElement('span');
+  label.className = 'chat-processing-label';
+  label.textContent = isCancelling ? 'Cancelling...' : 'Processing...';
+
+  const dots = document.createElement('span');
+  dots.className = 'chat-processing-dots';
+  dots.setAttribute('aria-hidden', 'true');
+  dots.innerHTML = '<span></span><span></span><span></span>';
+
+  indicator.append(label, dots);
+  return indicator;
 }
 
 function placeholderFavicon(): HTMLElement {
@@ -300,7 +389,7 @@ chatForm.addEventListener('submit', async (event) => {
   cancelRequestedTabs.delete(currentTab.id);
   optimisticMessagesByTab.set(currentTab.id, [
     ...(optimisticMessagesByTab.get(currentTab.id) ?? []),
-    { role: 'user', content },
+    { type: 'message', role: 'user', content },
   ]);
   chatInput.value = '';
   chatSend.disabled = true;
