@@ -19,7 +19,7 @@ import type {
   BrowserSnapshotResult,
   BrowserWaitRequest,
   BrowserWaitResult,
-} from '../agent/browser';
+} from '../agent/types';
 
 interface CdpTargetInfo {
   targetId: string;
@@ -382,7 +382,7 @@ export class PlaywrightManager {
       return null;
     }
 
-    return handle.evaluate((element) => {
+    return handle.evaluate((element: Element) => {
       const getText = (node: any) =>
         (node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 200);
 
@@ -408,6 +408,7 @@ export class PlaywrightManager {
       const name =
         element.getAttribute('aria-label') ||
         element.getAttribute('title') ||
+        // @ts-ignore
         ('labels' in element && element.labels?.[0]?.textContent?.trim()) ||
         ('placeholder' in element ? element.getAttribute('placeholder') : null) ||
         getText(element);
@@ -424,7 +425,7 @@ export class PlaywrightManager {
         text: getText(element) || undefined,
         value,
         placeholder: element.getAttribute('placeholder') || undefined,
-        href: element.tagName?.toLowerCase() === 'a' ? element.href : undefined,
+        href: element.tagName?.toLowerCase() === 'a' ? (element as Element & { href: string }).href : undefined,
         disabled:
           ('disabled' in element && Boolean(element.disabled)) ||
           element.getAttribute('aria-disabled') === 'true',
